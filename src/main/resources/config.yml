@@ -1,4 +1,5 @@
 debug: false
+auto-update: notify-only
 store-inventory: true
 store-armor: true
 use-permissions: true

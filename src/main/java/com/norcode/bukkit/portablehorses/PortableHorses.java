@@ -4,6 +4,7 @@ import com.comphenix.protocol.Packets;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
+import net.h31ix.updater.Updater;
 import net.minecraft.server.v1_6_R2.*;
 import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
@@ -20,13 +21,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.HorseInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.ByteArrayOutputStream;
@@ -39,6 +37,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     public static final String DISPLAY_NAME = "Portable Horse";
     private static final String LORE_PREFIX = ChatColor.DARK_GREEN + "" + ChatColor.DARK_PURPLE + "" + ChatColor.GRAY;
 
+    private Updater updater;
     private ProtocolManager protocolManager;
     private Field containerCountField;
     private boolean debugMode = false;
@@ -128,6 +127,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        doUpdater();
         Set<Integer> packets = new HashSet<Integer>();
         packets.add(0x67);
         packets.add(0x68);
@@ -234,6 +234,18 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.debugMode = getConfig().getBoolean("debug", false);
         this.storeArmor = getConfig().getBoolean("store-armor", true);
         this.storeInventory = getConfig().getBoolean("store-inventory", true);
+
+    }
+
+    public void doUpdater() {
+        String autoUpdate = getConfig().getString("auto-update", "notify-only").toLowerCase();
+        if (autoUpdate.equals("true")) {
+            updater = new Updater(this, "portable-horses", this.getFile(), Updater.UpdateType.DEFAULT, true);
+        } else if (autoUpdate.equals("false")) {
+            getLogger().info("Auto-updater is disabled.  Skipping check.");
+        } else {
+            updater = new Updater(this, "portable-horses", this.getFile(), Updater.UpdateType.NO_DOWNLOAD, true);
+        }
     }
 
     public void debug(String s) {
