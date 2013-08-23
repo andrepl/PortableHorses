@@ -1,0 +1,26 @@
+main: ${project.main}
+author: ${project.authors}
+name: ${project.name}
+version: ${project.version}
+depend: ${project.depend}
+commands:
+  portablehorses:
+    aliases: [ph]
+    usage: /<command> reloadconfig
+    description: Reloads the config file.
+    permission: portablehorses.admin
+
+permissions:
+  portablehorses.admin:
+    default: op
+    description: Administrator nodes.
+    children:
+      portablehorses.saddle: true
+      portablehorses.unsaddle: true
+
+  portablehorses.saddle:
+    default: true
+    description: allows saving horses to saddles.
+  portablehorses.unsaddle:
+      default: true
+      description: allows removing saddles from horses.

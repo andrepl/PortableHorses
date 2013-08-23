@@ -1,0 +1,4 @@
+debug: false
+store-inventory: true
+store-armor: true
+use-permissions: true
