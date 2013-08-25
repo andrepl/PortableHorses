@@ -53,6 +53,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         while (encoded.length() > 32760) {
             lines.add(encoded.substring(0, 32760));
             encoded = encoded.substring(32760);
+
         }
         if (encoded.length() > 0) {
             lines.add(ChatColor.BLACK + encoded);
@@ -347,7 +348,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     @EventHandler
     public void onClickSaddle(PlayerInteractEvent event) {
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
                 Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
                 Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
                 restoreHorseFromSaddle(event.getItem(), horse);
