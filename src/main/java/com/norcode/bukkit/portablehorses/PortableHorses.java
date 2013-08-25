@@ -19,6 +19,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -331,6 +332,16 @@ public class PortableHorses extends JavaPlugin implements Listener {
             }
         }
         return false;
+    }
+
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent event) {
+        if (event.getEntity() instanceof Horse) {
+            Horse h = (Horse) event.getEntity();
+            if (isPortableHorseSaddle(h.getInventory().getSaddle())) {
+                h.getInventory().setSaddle(new ItemStack(Material.SADDLE));
+            }
+        }
     }
 
     @EventHandler
