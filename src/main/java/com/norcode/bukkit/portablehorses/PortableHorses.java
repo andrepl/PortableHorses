@@ -156,7 +156,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
                         event.setCancelled(true);
                     } else if (event.getCurrentItem().getType().equals(Material.SADDLE) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
                         onSaddled(event, horse, event.getCurrentItem());
-                        event.setCurrentItem(null);
                     }
                 } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
                     // Removing a saddle by shift-click.
@@ -170,7 +169,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
                     } else if (event.getCursor().getType() == Material.SADDLE) {
                         debug("Saddling!");
                         onSaddled(event, horse, event.getCursor());
-                        event.setCurrentItem(null);
                     }
                 }
             } else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
@@ -187,6 +185,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         if (!usePermissions || event.getWhoClicked().hasPermission("portablehorses.saddle")) {
             saveToSaddle(horse, saddle);
             horse.getInventory().setSaddle(saddle);
+            event.setCurrentItem(null);
         }
     }
 
@@ -240,11 +239,15 @@ public class PortableHorses extends JavaPlugin implements Listener {
     public void onClickSaddle(PlayerInteractEvent event) {
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
-                Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
-                Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
-                restoreHorseFromSaddle(event.getItem(), horse);
-                horse.getInventory().setSaddle(event.getItem());
-                event.getPlayer().setItemInHand(null);
+                if (event.getPlayer().hasPermission("portablehorses.spawn")) {
+                    Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
+                    Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
+                    restoreHorseFromSaddle(event.getItem(), horse);
+                    horse.getInventory().setSaddle(event.getItem());
+                    event.getPlayer().setItemInHand(null);
+                } else {
+                    event.getPlayer().sendMessage("Sorry, you don't have permission to spawn your horse here.");
+                }
             }
         }
     }

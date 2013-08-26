@@ -12,6 +12,7 @@ import com.comphenix.protocol.wrappers.nbt.*;
 import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.v1_6_R2.entity.CraftPlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
@@ -192,6 +193,9 @@ public class PacketListener {
                 meta.setLore(newLore);
                 stack.setItemMeta(meta);
                 NbtCompound tag = NbtFactory.asCompound(NbtFactory.fromItemTag(stack));
+                if (!tag.containsKey("ench")) {
+                    tag.put("ench", NbtFactory.ofList("ench"));
+                }
                 tag.put("PORTABLEHORSE", NbtFactory.ofList("PORTABLEHORSE", data));
             }
             return stack;
