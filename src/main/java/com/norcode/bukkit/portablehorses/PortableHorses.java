@@ -1,22 +1,19 @@
 package com.norcode.bukkit.portablehorses;
 
-import com.comphenix.protocol.Packets;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.*;
 import net.h31ix.updater.Updater;
-import net.minecraft.server.v1_6_R2.*;
+import net.minecraft.server.v1_6_R2.EntityHorse;
+import net.minecraft.server.v1_6_R2.NBTCompressedStreamTools;
+import net.minecraft.server.v1_6_R2.NBTTagCompound;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_6_R2.entity.CraftHorse;
-import org.bukkit.craftbukkit.v1_6_R2.entity.CraftPlayer;
-import org.bukkit.craftbukkit.v1_6_R2.inventory.CraftItemStack;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Horse;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -24,27 +21,24 @@ import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.HorseInventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.lang.reflect.Field;
 import java.util.*;
 
 public class PortableHorses extends JavaPlugin implements Listener {
 
     public static final String DISPLAY_NAME = "Portable Horse";
-    private static final String LORE_PREFIX = ChatColor.DARK_GREEN + "" + ChatColor.DARK_PURPLE + "" + ChatColor.GRAY;
+    public static final String LORE_PREFIX = ChatColor.DARK_GREEN + "" + ChatColor.DARK_PURPLE + "" + ChatColor.GRAY;
 
     private Updater updater;
-    private ProtocolManager protocolManager;
-    private Field containerCountField;
+    private PacketListener packetListener;
     private boolean debugMode = false;
     private boolean usePermissions = true;
     private boolean storeArmor = true;
     private boolean storeInventory = true;
+    private Random random = new Random();
+    private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
 
     public static LinkedList<String> nbtToLore(NBTTagCompound tag) {
         byte[] tagdata = NBTCompressedStreamTools.a(tag);
@@ -61,9 +55,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
         return lines;
     }
 
-    public void onLoad() {
-        protocolManager = ProtocolLibrary.getProtocolManager();
-    }
 
     public NBTTagCompound nbtFromLore(List<String> lore) {
         String data = "";
@@ -98,7 +89,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
             meta.setDisplayName(horse.getCustomName());
         }
         LinkedList<String> lore = nbtToLore(tag);
-
         lore.addFirst(LORE_PREFIX + horse.getVariant().name() + "/" + horse.getColor().name());
         meta.setLore(lore);
         saddle.setItemMeta(meta);
@@ -123,110 +113,9 @@ public class PortableHorses extends JavaPlugin implements Listener {
         getConfig().options().copyDefaults(true);
         saveConfig();
         reloadConfig();
-        try {
-            containerCountField = EntityPlayer.class.getDeclaredField("containerCounter");
-            containerCountField.setAccessible(true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        this.packetListener = new PacketListener(this);
         doUpdater();
-        Set<Integer> packets = new HashSet<Integer>();
-        packets.add(0x67);
-        packets.add(0x68);
-        packets.add(0x6B);
-        packets.add(0xFA);
-        ProtocolLibrary.getProtocolManager().addPacketListener(new PacketAdapter(this, ConnectionSide.SERVER_SIDE, ListenerPriority.NORMAL, packets) {
-            @Override
-            public void onPacketSending(PacketEvent event) {
-                PacketContainer packet = event.getPacket();
-                switch(packet.getID()){
-                    case 0x68:
-                        try{
-                            ItemStack[] read = packet.getItemArrayModifier().read(0);
-                            for(int i=0; i<read.length; i++) {
-                                read[i] = filterLore(read[i]);
-                            }
-                            packet.getItemArrayModifier().write(0, read);
-                        }
-                        catch(Exception e) {
-                            e.printStackTrace();
-                        }
-                        break;
-                    case 0xFA:
-                        try{
-                            EntityPlayer p = ((CraftPlayer)event.getPlayer()).getHandle();
-                            ContainerMerchant cM = ((ContainerMerchant) p.activeContainer);
-                            Field fieldMerchant = cM.getClass().getDeclaredField("merchant");
-                            fieldMerchant.setAccessible(true);
-                            IMerchant imerchant = (IMerchant)fieldMerchant.get(cM);
-
-                            MerchantRecipeList merchantrecipelist = imerchant.getOffers(p);
-                            MerchantRecipeList nlist = new MerchantRecipeList();
-                            for(Object orecipe : merchantrecipelist) {
-                                MerchantRecipe recipe = (MerchantRecipe)orecipe;
-                                int uses = recipe.i().getInt("uses");
-                                int maxUses = recipe.i().getInt("maxUses");
-                                MerchantRecipe nrecipe = new MerchantRecipe(filterLore(recipe.getBuyItem1()), filterLore(recipe.getBuyItem2()), filterLore(recipe.getBuyItem3()));
-                                nrecipe.a(maxUses-7);
-                                for(int i=0; i < uses; i++) {
-                                    nrecipe.f();
-                                }
-                                nlist.add(nrecipe);
-                            }
-
-                            ByteArrayOutputStream bytearrayoutputstream = new ByteArrayOutputStream();
-                            DataOutputStream dataoutputstream = new DataOutputStream(bytearrayoutputstream);
-                            dataoutputstream.writeInt(containerCountField.getInt(p));
-                            nlist.a(dataoutputstream);
-                            byte[] b = bytearrayoutputstream.toByteArray();
-                            packet.getByteArrays().write(0, b);
-                            packet.getIntegers().write(0, b.length);
-                        }
-                        catch(Exception e){
-                            e.printStackTrace();
-                        }
-                        break;
-                    default:
-                        try{
-                            packet.getItemModifier().write(0, filterLore(packet.getItemModifier().read(0)));
-                        }
-                        catch(Exception e) {
-                            e.printStackTrace();
-                        }
-
-                }
-            }
-
-        });
         getServer().getPluginManager().registerEvents(this, this);
-    }
-
-    private net.minecraft.server.v1_6_R2.ItemStack filterLore(net.minecraft.server.v1_6_R2.ItemStack itemStack) {
-        if (itemStack == null) {
-            return null;
-        }
-        ItemStack stack = CraftItemStack.asCraftMirror(itemStack);
-        return CraftItemStack.asNMSCopy(filterLore(stack));
-    }
-
-    private ItemStack filterLore(ItemStack itemStack) {
-        if (itemStack != null) {
-            ItemStack stack = itemStack.clone();
-            if (stack.hasItemMeta() && stack.getItemMeta().hasLore() && stack.getItemMeta().getLore().get(0).startsWith(LORE_PREFIX)) {
-                ItemMeta meta = stack.getItemMeta();
-                List<String> lore = meta.getLore();
-                LinkedList<String> newLore = new LinkedList<String>();
-                for (String line: lore) {
-                    if (!line.startsWith(ChatColor.BLACK.toString())) {
-                        newLore.add(line);
-                    }
-                }
-                meta.setLore(newLore);
-                stack.setItemMeta(meta);
-            }
-            return stack;
-        }
-        return null;
     }
 
     @Override
@@ -236,7 +125,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.debugMode = getConfig().getBoolean("debug", false);
         this.storeArmor = getConfig().getBoolean("store-armor", true);
         this.storeInventory = getConfig().getBoolean("store-inventory", true);
-
     }
 
     public void doUpdater() {
@@ -258,15 +146,17 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onSaddleEvent(final InventoryClickEvent event) {
+        if (!(event.getInventory() instanceof HorseInventory)) return;
+
         if (event.getInventory() instanceof HorseInventory) {
             Horse horse = ((Horse) event.getInventory().getHolder());
             if (event.isShiftClick()) {
                 if (event.getRawSlot() != 0) {
-
                     if (isPortableHorseSaddle(event.getCurrentItem())) {
                         event.setCancelled(true);
                     } else if (event.getCurrentItem().getType().equals(Material.SADDLE) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
                         onSaddled(event, horse, event.getCurrentItem());
+                        event.setCurrentItem(null);
                     }
                 } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
                     // Removing a saddle by shift-click.
@@ -280,6 +170,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
                     } else if (event.getCursor().getType() == Material.SADDLE) {
                         debug("Saddling!");
                         onSaddled(event, horse, event.getCursor());
+                        event.setCurrentItem(null);
                     }
                 }
             } else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
@@ -326,7 +217,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
             if (currentItem.hasItemMeta()) {
                 if (currentItem.getItemMeta().hasLore()) {
                     List<String> lore = currentItem.getItemMeta().getLore();
-                    if (lore.size() > 1 && lore.get(0).startsWith(LORE_PREFIX)) {
+                    if (lore.size() >= 1 && lore.get(0).startsWith(LORE_PREFIX)) {
                         return true;
                     }
                 }
