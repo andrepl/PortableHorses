@@ -298,7 +298,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         if (event.getEntity() instanceof Horse) {
             Horse h = (Horse) event.getEntity();
             if (isPortableHorseSaddle(h.getInventory().getSaddle())) {
-                h.getInventory().setSaddle(new ItemStack(Material.SADDLE));
+                h.getInventory().setSaddle(getEmptyPortableHorseSaddle());
             }
         }
     }
