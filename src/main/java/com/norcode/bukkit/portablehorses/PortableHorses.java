@@ -5,6 +5,7 @@ import net.minecraft.server.v1_6_R2.EntityHorse;
 import net.minecraft.server.v1_6_R2.NBTCompressedStreamTools;
 import net.minecraft.server.v1_6_R2.NBTTagCompound;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
@@ -21,7 +22,10 @@ import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.HorseInventory;
+import org.bukkit.inventory.Recipe;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
@@ -37,8 +41,12 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean usePermissions = true;
     private boolean storeArmor = true;
     private boolean storeInventory = true;
+    private boolean requireSpecialSaddle = false;
+    private boolean craftSpecialSaddle = false;
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
+    private ShapedRecipe specialSaddleRecipe;
+
 
     public static LinkedList<String> nbtToLore(NBTTagCompound tag) {
         byte[] tagdata = NBTCompressedStreamTools.a(tag);
@@ -47,14 +55,12 @@ public class PortableHorses extends JavaPlugin implements Listener {
         while (encoded.length() > 32760) {
             lines.add(encoded.substring(0, 32760));
             encoded = encoded.substring(32760);
-
         }
         if (encoded.length() > 0) {
             lines.add(ChatColor.BLACK + encoded);
         }
         return lines;
     }
-
 
     public NBTTagCompound nbtFromLore(List<String> lore) {
         String data = "";
@@ -107,6 +113,16 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
+    private Recipe getSpecialSaddleRecipe() {
+        if (this.specialSaddleRecipe == null) {
+            ItemStack result = getEmptyPortableHorseSaddle();
+            this.specialSaddleRecipe = new ShapedRecipe(result);
+            this.specialSaddleRecipe.shape("PPP", "PSP", "PPP");
+            this.specialSaddleRecipe.setIngredient('P', getCraftingSupplement());
+            this.specialSaddleRecipe.setIngredient('S', Material.SADDLE);
+        }
+        return this.specialSaddleRecipe;
+    }
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -116,6 +132,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.packetListener = new PacketListener(this);
         doUpdater();
         getServer().getPluginManager().registerEvents(this, this);
+
     }
 
     @Override
@@ -125,6 +142,26 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.debugMode = getConfig().getBoolean("debug", false);
         this.storeArmor = getConfig().getBoolean("store-armor", true);
         this.storeInventory = getConfig().getBoolean("store-inventory", true);
+        this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
+        this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
+        boolean found = false;
+        Iterator<Recipe> it = getServer().recipeIterator();
+        while (it.hasNext()) {
+            Recipe r = it.next();
+            if (r.equals(this.specialSaddleRecipe)) {
+                if (!craftSpecialSaddle) {
+                    it.remove();
+                    break;
+                } else {
+                    found = true;
+                }
+            }
+
+        }
+        if (craftSpecialSaddle && !found) {
+            getServer().addRecipe(this.getSpecialSaddleRecipe());
+        }
+
     }
 
     public void doUpdater() {
@@ -154,7 +191,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
                 if (event.getRawSlot() != 0) {
                     if (isPortableHorseSaddle(event.getCurrentItem())) {
                         event.setCancelled(true);
-                    } else if (event.getCurrentItem().getType().equals(Material.SADDLE) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
+                    } else if (isEmptyPortableHorseSaddle(event.getCurrentItem()) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
                         onSaddled(event, horse, event.getCurrentItem());
                     }
                 } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
@@ -166,7 +203,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
                     if (isPortableHorseSaddle(event.getCursor())) {
                         // Placing a saddle
                         event.setCancelled(true);
-                    } else if (event.getCursor().getType() == Material.SADDLE) {
+                    } else if (isEmptyPortableHorseSaddle(event.getCursor())) {
                         debug("Saddling!");
                         onSaddled(event, horse, event.getCursor());
                     }
@@ -211,12 +248,43 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
+    public ItemStack getEmptyPortableHorseSaddle() {
+        PlayerPickupItemEvent e;
+
+        if (requireSpecialSaddle) {
+            ItemStack s = new ItemStack(Material.SADDLE);
+            ItemMeta meta = getServer().getItemFactory().getItemMeta(Material.SADDLE);
+            meta.setDisplayName(DISPLAY_NAME);
+            List<String> lore = new LinkedList<String>();
+            lore.add("empty");
+            meta.setLore(lore);
+            s.setItemMeta(meta);
+            return s;
+        } else {
+            return new ItemStack(Material.SADDLE);
+        }
+    }
+
+    private boolean isEmptyPortableHorseSaddle(ItemStack currentItem) {
+        if (requireSpecialSaddle) {
+            if (!currentItem.hasItemMeta()) {
+                return false;
+            }
+            if (!DISPLAY_NAME.equals(currentItem.getItemMeta().getDisplayName())) {
+                return false;
+            }
+            return currentItem.getItemMeta().hasLore() && "empty".equals(currentItem.getItemMeta().getLore().get(0));
+        } else {
+            return !isPortableHorseSaddle(currentItem);
+        }
+    }
+
     private boolean isPortableHorseSaddle(ItemStack currentItem) {
         if (currentItem.getType().equals(Material.SADDLE)) {
             if (currentItem.hasItemMeta()) {
                 if (currentItem.getItemMeta().hasLore()) {
                     List<String> lore = currentItem.getItemMeta().getLore();
-                    if (lore.size() >= 1 && lore.get(0).startsWith(LORE_PREFIX)) {
+                    if (lore.size() >= 1 && lore.get(0).startsWith(LORE_PREFIX) && lore.get(0).length() > LORE_PREFIX.length()) {
                         return true;
                     }
                 }
@@ -253,4 +321,24 @@ public class PortableHorses extends JavaPlugin implements Listener {
     }
 
 
+    public MaterialData getCraftingSupplement() {
+        String mat = getConfig().getString("recipe-extra-item", "ENDER_PEARL");
+        int data = -1;
+        if (mat.contains(":")) {
+            String[] parts = mat.split(":");
+            mat = parts[0];
+            data = Integer.parseInt(parts[1]);
+        }
+        Material material = null;
+        try {
+            material = Material.getMaterial(Integer.parseInt(mat));
+        } catch (IllegalArgumentException ex) {
+            material = Material.getMaterial(mat);
+        }
+        MaterialData md = new MaterialData(material);
+        if (data != -1) {
+            md.setData((byte) data);
+        }
+        return md;
+    }
 }

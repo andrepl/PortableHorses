@@ -135,27 +135,29 @@ public class PacketListener {
 
     public ItemStack unfilterLore(ItemStack stack) {
         if (stack != null) {
-            if (stack.hasItemMeta() && stack.getItemMeta().hasLore() && stack.getItemMeta().getLore().get(0).startsWith(PortableHorses.LORE_PREFIX)) {
-                if (!MinecraftReflection.isCraftItemStack(stack)) {
-                    stack = MinecraftReflection.getBukkitItemStack(stack);
-                }
-                NbtCompound tag = NbtFactory.asCompound(NbtFactory.fromItemTag(stack));
-                if (tag.containsKey("PORTABLEHORSE")) {
-                    ItemMeta meta = stack.getItemMeta();
-                    LinkedList<String> lore = new LinkedList<String>();
-                    for (String s: meta.getLore()) {
-                        if (!s.startsWith(ChatColor.BLACK.toString())) {
-                            lore.add(s);
+            if (stack.hasItemMeta() && stack.getItemMeta().hasLore()) {
+                if (stack.getItemMeta().getLore().get(0).startsWith(PortableHorses.LORE_PREFIX) || stack.getItemMeta().getLore().get(0).equals("empty")) {
+                    if (!MinecraftReflection.isCraftItemStack(stack)) {
+                        stack = MinecraftReflection.getBukkitItemStack(stack);
+                    }
+                    NbtCompound tag = NbtFactory.asCompound(NbtFactory.fromItemTag(stack));
+                    if (tag.containsKey("PORTABLEHORSE")) {
+                        ItemMeta meta = stack.getItemMeta();
+                        LinkedList<String> lore = new LinkedList<String>();
+                        for (String s: meta.getLore()) {
+                            if (!s.startsWith(ChatColor.BLACK.toString())) {
+                                lore.add(s);
+                            }
                         }
+                        NbtList dataList = tag.getList("PORTABLEHORSE");
+                        dataList.setElementType(NbtType.TAG_STRING);
+                        Iterator<String> it = dataList.iterator();
+                        while (it.hasNext()) {
+                            lore.add(it.next());
+                        }
+                        meta.setLore(lore);
+                        stack.setItemMeta(meta);
                     }
-                    NbtList dataList = tag.getList("PORTABLEHORSE");
-                    dataList.setElementType(NbtType.TAG_STRING);
-                    Iterator<String> it = dataList.iterator();
-                    while (it.hasNext()) {
-                        lore.add(it.next());
-                    }
-                    meta.setLore(lore);
-                    stack.setItemMeta(meta);
                 }
             }
         }
@@ -175,28 +177,30 @@ public class PacketListener {
 
     public ItemStack filterLore(ItemStack stack) {
         if (stack != null) {
-            if (stack.hasItemMeta() && stack.getItemMeta().hasLore() && stack.getItemMeta().getLore().get(0).startsWith(PortableHorses.LORE_PREFIX)) {
-                if (!MinecraftReflection.isCraftItemStack(stack)) {
-                    stack = MinecraftReflection.getBukkitItemStack(stack);
-                }
-                ItemMeta meta = stack.getItemMeta();
-                List<String> lore = meta.getLore();
-                List<String> data = new LinkedList<String>();
-                LinkedList<String> newLore = new LinkedList<String>();
-                for (String line: lore) {
-                    if (line.startsWith(ChatColor.BLACK.toString())) {
-                        data.add(line);
-                    } else {
-                        newLore.add(line);
+            if (stack.hasItemMeta() && stack.getItemMeta().hasLore()) {
+                if (stack.getItemMeta().getLore().get(0).startsWith(PortableHorses.LORE_PREFIX) || stack.getItemMeta().getLore().get(0).equals("empty")) {
+                    if (!MinecraftReflection.isCraftItemStack(stack)) {
+                        stack = MinecraftReflection.getBukkitItemStack(stack);
                     }
+                    ItemMeta meta = stack.getItemMeta();
+                    List<String> lore = meta.getLore();
+                    List<String> data = new LinkedList<String>();
+                    LinkedList<String> newLore = new LinkedList<String>();
+                    for (String line: lore) {
+                        if (line.startsWith(ChatColor.BLACK.toString())) {
+                            data.add(line);
+                        } else {
+                            newLore.add(line);
+                        }
+                    }
+                    meta.setLore(newLore);
+                    stack.setItemMeta(meta);
+                    NbtCompound tag = NbtFactory.asCompound(NbtFactory.fromItemTag(stack));
+                    if (!tag.containsKey("ench")) {
+                        tag.put("ench", NbtFactory.ofList("ench"));
+                    }
+                    tag.put("PORTABLEHORSE", NbtFactory.ofList("PORTABLEHORSE", data));
                 }
-                meta.setLore(newLore);
-                stack.setItemMeta(meta);
-                NbtCompound tag = NbtFactory.asCompound(NbtFactory.fromItemTag(stack));
-                if (!tag.containsKey("ench")) {
-                    tag.put("ench", NbtFactory.ofList("ench"));
-                }
-                tag.put("PORTABLEHORSE", NbtFactory.ofList("PORTABLEHORSE", data));
             }
             return stack;
         }

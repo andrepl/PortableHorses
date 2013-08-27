@@ -2,4 +2,7 @@ debug: false
 auto-update: notify-only
 store-inventory: true
 store-armor: true
+require-special-saddle: true
+craft-special-saddle: true
+recipe-extra-item: ENDER_PEARL
 use-permissions: true
