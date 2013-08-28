@@ -10,12 +10,9 @@ import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.utility.StreamSerializer;
 import com.comphenix.protocol.wrappers.nbt.*;
 import org.bukkit.ChatColor;
-import org.bukkit.craftbukkit.v1_6_R2.entity.CraftPlayer;
 import org.bukkit.entity.Player;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipe;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipeList;
 
@@ -82,8 +79,6 @@ public class PacketListener {
 
 
         // Prevent creative from overwriting the item stacks
-
-
         PacketAdapter.AdapterParameteters params = PacketAdapter.params()
                 .plugin(plugin)
                 .connectionSide(ConnectionSide.BOTH)
@@ -93,33 +88,28 @@ public class PacketListener {
 
         protocolManager.addPacketListener(new PacketAdapter(params) {
                 PortableHorses ph = PacketListener.this.plugin;
+
                 @Override
                 public void onPacketSending(PacketEvent event) {
                     if (event.getPacketID() == Packets.Client.SET_CREATIVE_SLOT) {
-                        // Process the slot data
                         filterLore(event.getPacket().getItemModifier().read(0));
                     }
                 }
 
                 @Override
                 public void onPacketReceiving(PacketEvent event) {
-                    // Thread safe too!
                     if (event.getPacketID() == Packets.Client.SET_CREATIVE_SLOT) {
                         DataInputStream input = event.getNetworkMarker().getInputStream();
-
-                        // Skip simulated packets
-                        if (input == null)
+                        if (input == null) {
                             return;
+                        }
 
                         try {
                             // Read slot
                             input.readShort();
+                            // read  & unfilter itemstack
                             ItemStack stack = readItemStack(input, new StreamSerializer());
-
-                            // Now we can properly unprocess it
-
                             unfilterLore(stack);
-
                             // And write it back
                             event.getPacket().getItemModifier().write(0, stack);
 
@@ -133,6 +123,12 @@ public class PacketListener {
 
     }
 
+    /**
+     * Moves the encoded horse data from the NBT Tag,
+     * back into the lore of the given itemstack.
+     * @param stack an ItemStack coming from the a client-to-server packet
+     * @return the same itemstack prepared for server side use.
+     */
     public ItemStack unfilterLore(ItemStack stack) {
         if (stack != null) {
             if (stack.hasItemMeta() && stack.getItemMeta().hasLore()) {
@@ -174,7 +170,12 @@ public class PacketListener {
         return stacks;
     }
 
-
+    /**
+     * Move the encoded horse data from the lore of the given itemstack
+     * into a custom NBT Tag for use in server-to-client packets.
+     * @param stack the itemstack to filter.
+     * @return the same itemstack, filtered.
+     */
     public ItemStack filterLore(ItemStack stack) {
         if (stack != null) {
             if (stack.hasItemMeta() && stack.getItemMeta().hasLore()) {

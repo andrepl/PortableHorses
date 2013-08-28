@@ -53,7 +53,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         LinkedList<String> lines = new LinkedList<String>();
         String encoded = new String(Base64.encode(tagdata));
         while (encoded.length() > 32760) {
-            lines.add(encoded.substring(0, 32760));
+            lines.add(ChatColor.BLACK + encoded.substring(0, 32760));
             encoded = encoded.substring(32760);
         }
         if (encoded.length() > 0) {
@@ -78,7 +78,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
         NBTTagCompound tag = NBTCompressedStreamTools.a(decoded);
         return tag;
-
     }
 
     public ItemStack saveToSaddle(Horse horse, ItemStack saddle) {
@@ -123,6 +122,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
         return this.specialSaddleRecipe;
     }
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
@@ -144,6 +144,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.storeInventory = getConfig().getBoolean("store-inventory", true);
         this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
+        // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
         Iterator<Recipe> it = getServer().recipeIterator();
         while (it.hasNext()) {
@@ -156,7 +157,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
                     found = true;
                 }
             }
-
         }
         if (craftSpecialSaddle && !found) {
             getServer().addRecipe(this.getSpecialSaddleRecipe());
