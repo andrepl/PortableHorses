@@ -5,6 +5,7 @@ import net.minecraft.server.v1_6_R2.EntityHorse;
 import net.minecraft.server.v1_6_R2.NBTCompressedStreamTools;
 import net.minecraft.server.v1_6_R2.NBTTagCompound;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
@@ -41,6 +42,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean usePermissions = true;
     private boolean storeArmor = true;
     private boolean storeInventory = true;
+    private boolean allowNestedSaddles = false;
     private boolean requireSpecialSaddle = false;
     private boolean craftSpecialSaddle = false;
     private Random random = new Random();
@@ -142,6 +144,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.debugMode = getConfig().getBoolean("debug", false);
         this.storeArmor = getConfig().getBoolean("store-armor", true);
         this.storeInventory = getConfig().getBoolean("store-inventory", true);
+        this.allowNestedSaddles = getConfig().getBoolean("allow-nested-saddles", false);
         this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
         // Add or remove the crafting recipe for the special saddle as necessary.
@@ -181,42 +184,62 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority= EventPriority.NORMAL, ignoreCancelled = true)
     public void onSaddleEvent(final InventoryClickEvent event) {
         if (!(event.getInventory() instanceof HorseInventory)) return;
-
-        if (event.getInventory() instanceof HorseInventory) {
-            Horse horse = ((Horse) event.getInventory().getHolder());
-            if (event.isShiftClick()) {
-                if (event.getRawSlot() != 0) {
-                    if (isPortableHorseSaddle(event.getCurrentItem())) {
-                        event.setCancelled(true);
-                    } else if (isEmptyPortableHorseSaddle(event.getCurrentItem()) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
-                        onSaddled(event, horse, event.getCurrentItem());
-                    }
-                } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
-                    // Removing a saddle by shift-click.
-                    onUnsaddled(event, horse, event.getCurrentItem());
+        Horse horse = ((Horse) event.getInventory().getHolder());
+        if (event.isShiftClick()) {
+            if (event.getRawSlot() != 0) {
+                if (isPortableHorseSaddle(event.getCurrentItem())) {
+                    event.setCancelled(true);
+                } else if (isEmptyPortableHorseSaddle(event.getCurrentItem()) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
+                    onSaddled(event, horse, event.getCurrentItem());
                 }
-            } else if (event.getAction() == InventoryAction.PLACE_ALL || event.getAction() == InventoryAction.PLACE_ONE) {
-                if (event.getRawSlot() == 0 && event.getCurrentItem().getType() == Material.AIR) {
-                    if (isPortableHorseSaddle(event.getCursor())) {
-                        // Placing a saddle
-                        event.setCancelled(true);
-                    } else if (isEmptyPortableHorseSaddle(event.getCursor())) {
-                        debug("Saddling!");
-                        onSaddled(event, horse, event.getCursor());
-                    }
+            } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
+                // Removing a saddle by shift-click.
+                onUnsaddled(event, horse, event.getCurrentItem());
+            }
+        } else if (event.getAction() == InventoryAction.PLACE_ALL || event.getAction() == InventoryAction.PLACE_ONE) {
+            if (event.getRawSlot() == 0 && event.getCurrentItem().getType() == Material.AIR) {
+                if (isPortableHorseSaddle(event.getCursor())) {
+                    event.setCancelled(true);
+                } else if (isEmptyPortableHorseSaddle(event.getCursor())) {
+                    debug("Saddling!");
+                    onSaddled(event, horse, event.getCursor());
                 }
-            } else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
-                if (event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
-                    // removed a saddle.
-                    onUnsaddled(event, horse, event.getCurrentItem());
-                }
+            }
+        } else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
+            if (event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
+                // removed a saddle.
+                onUnsaddled(event, horse, event.getCurrentItem());
             }
         }
     }
 
+    @EventHandler(priority=EventPriority.HIGH)
+    public void onInventoryClick(final InventoryClickEvent event) {
+        if (!(event.getInventory() instanceof HorseInventory)) return;
+        if (allowNestedSaddles) {
+            return;
+        }
+        Horse horse = ((Horse) event.getInventory().getHolder());
+        if (!horse.isCarryingChest()) {
+            return;
+        }
+        getServer().getScheduler().runTaskLater(this, new Runnable() {
+            @Override
+            public void run() {
+                for (int i=1;i<event.getInventory().getSize();i++) {
+                    ItemStack s = ((HorseInventory) event.getInventory()).getItem(i);
+                    if (s != null && isPortableHorseSaddle(s)) {
+                        event.getInventory().setItem(i, null);
+                        event.getWhoClicked().getInventory().addItem(s);
+                        ((Player) event.getWhoClicked()).updateInventory();
+                    }
+                }
+            }
+        }, 0);
+    }
     public void onSaddled(InventoryClickEvent event, Horse horse, ItemStack saddle) {
         debug(horse + "Saddled.");
         if (!usePermissions || event.getWhoClicked().hasPermission("portablehorses.saddle")) {
