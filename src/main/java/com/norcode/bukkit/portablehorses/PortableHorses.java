@@ -35,6 +35,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     public static final String DISPLAY_NAME = "Portable Horse";
     public static final String LORE_PREFIX = ChatColor.DARK_GREEN + "" + ChatColor.DARK_PURPLE + "" + ChatColor.GRAY;
+    private static final EnumSet<Material> INTERACTIVE_BLOCKS = EnumSet.of(Material.WOODEN_DOOR, Material.IRON_DOOR_BLOCK, Material.FENCE_GATE, Material.WORKBENCH,
+                        Material.ENCHANTMENT_TABLE, Material.ENDER_CHEST, Material.ENDER_PORTAL_FRAME, Material.CHEST, Material.TRAPPED_CHEST, Material.REDSTONE_COMPARATOR_OFF,
+                        Material.REDSTONE_COMPARATOR_ON, Material.DIODE_BLOCK_OFF, Material.DIODE_BLOCK_ON, Material.BEACON, Material.TRAP_DOOR, Material.NOTE_BLOCK, Material.JUKEBOX,
+                        Material.BREWING_STAND, Material.ANVIL, Material.BED_BLOCK, Material.FURNACE, Material.BURNING_FURNACE);
 
     private Updater updater;
     private PacketListener packetListener;
@@ -328,8 +332,12 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onClickSaddle(PlayerInteractEvent event) {
+        getLogger().info(event.useInteractedBlock().toString());
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
+                if (INTERACTIVE_BLOCKS.contains(event.getClickedBlock().getType())) {
+                    return;
+                }
                 if (event.getPlayer().hasPermission("portablehorses.spawn")) {
                     Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
                     Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
