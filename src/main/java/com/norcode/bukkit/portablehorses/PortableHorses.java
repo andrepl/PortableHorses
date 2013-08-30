@@ -332,7 +332,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onClickSaddle(PlayerInteractEvent event) {
-        getLogger().info(event.useInteractedBlock().toString());
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
                 if (INTERACTIVE_BLOCKS.contains(event.getClickedBlock().getType())) {
