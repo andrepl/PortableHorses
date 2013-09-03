@@ -307,7 +307,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     }
 
     private boolean isPortableHorseSaddle(ItemStack currentItem) {
-        if (currentItem.getType().equals(Material.SADDLE)) {
+        if (currentItem != null && currentItem.getType().equals(Material.SADDLE)) {
             if (currentItem.hasItemMeta()) {
                 if (currentItem.getItemMeta().hasLore()) {
                     List<String> lore = currentItem.getItemMeta().getLore();
