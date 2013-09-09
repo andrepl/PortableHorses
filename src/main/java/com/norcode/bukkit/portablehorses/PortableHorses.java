@@ -217,6 +217,9 @@ public class PortableHorses extends JavaPlugin implements Listener {
                 // removed a saddle.
                 onUnsaddled(event, horse, event.getCurrentItem());
             }
+        } else if (event.getAction() == InventoryAction.HOTBAR_SWAP && event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
+            onUnsaddled(event, horse, event.getCurrentItem());
+
         }
     }
 
