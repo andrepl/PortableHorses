@@ -28,6 +28,7 @@ public class PacketListener {
         this.plugin = plugin;
         protocolManager = ProtocolLibrary.getProtocolManager();
         this.registerListeners();
+
     }
 
     public void registerListeners() {

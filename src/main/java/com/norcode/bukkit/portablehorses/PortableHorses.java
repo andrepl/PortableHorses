@@ -7,6 +7,7 @@ import net.minecraft.server.v1_6_R2.NBTTagCompound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.ItemStack;
 import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
@@ -55,6 +56,9 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
 
     public static LinkedList<String> nbtToLore(NBTTagCompound tag) {
+        if (tag.hasKey("SaddleItem")) {
+            tag.remove("SaddleItem");
+        }
         byte[] tagdata = NBTCompressedStreamTools.a(tag);
         LinkedList<String> lines = new LinkedList<String>();
         String encoded = new String(Base64.encode(tagdata));
@@ -220,10 +224,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
         } else if ((event.getAction() == InventoryAction.HOTBAR_SWAP || event.getAction() == InventoryAction.DROP_ONE_SLOT) && event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
             onUnsaddled(event, horse, event.getCurrentItem());
         }
+
     }
+
 
     @EventHandler(priority=EventPriority.HIGH)
     public void onInventoryClick(final InventoryClickEvent event) {
+
         if (!(event.getInventory() instanceof HorseInventory)) return;
         if (allowNestedSaddles) {
             return;
