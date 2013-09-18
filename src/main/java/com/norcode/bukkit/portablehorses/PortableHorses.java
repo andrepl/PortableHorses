@@ -357,11 +357,15 @@ public class PortableHorses extends JavaPlugin implements Listener {
                 if (event.getPlayer().hasPermission("portablehorses.spawn")) {
                     Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
                     Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
-                    restoreHorseFromSaddle(event.getItem(), horse);
-                    horse.getInventory().setSaddle(event.getItem());
-                    event.getPlayer().setItemInHand(null);
+                    if (horse != null) {
+                        restoreHorseFromSaddle(event.getItem(), horse);
+                        horse.getInventory().setSaddle(event.getItem());
+                        event.getPlayer().setItemInHand(null);
+                    } else {
+                        event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
+                    }
                 } else {
-                    event.getPlayer().sendMessage("Sorry, you don't have permission to spawn your horse here.");
+                    event.getPlayer().sendMessage("Sorry, you don't have permission to spawn your horse.");
                 }
             }
         }
