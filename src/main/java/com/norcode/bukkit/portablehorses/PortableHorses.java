@@ -221,8 +221,16 @@ public class PortableHorses extends JavaPlugin implements Listener {
                 // removed a saddle.
                 onUnsaddled(event, horse, event.getCurrentItem());
             }
-        } else if ((event.getAction() == InventoryAction.HOTBAR_SWAP || event.getAction() == InventoryAction.DROP_ONE_SLOT) && event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
+        } else if ((event.getAction() == InventoryAction.HOTBAR_SWAP ||
+                    event.getAction() == InventoryAction.DROP_ONE_SLOT ||
+                    event.getAction() == InventoryAction.HOTBAR_MOVE_AND_READD) && event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
             onUnsaddled(event, horse, event.getCurrentItem());
+        } else if (debugMode) {
+            debug("Inventory Action:" + event.getAction());
+            debug("Cursor:" + event.getCursor());
+            debug("CurrentItem:" + event.getCurrentItem());
+            debug("Click:" + event.getClick());
+
         }
 
     }
