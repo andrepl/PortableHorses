@@ -93,7 +93,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         NBTTagCompound tag = new NBTTagCompound();
         EntityHorse eh = ((CraftHorse) horse).getHandle();
         eh.b(tag);
-
+        tag.setDouble("currentHP", horse.getHealth());
         ItemMeta meta = saddle.getItemMeta();
         if (meta == null) {
             meta = getServer().getItemFactory().getItemMeta(Material.SADDLE);
@@ -109,6 +109,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         return saddle;
     }
 
+
     public void restoreHorseFromSaddle(ItemStack stack, Horse horse) {
         EntityHorse eh = ((CraftHorse) horse).getHandle();
         if (stack.hasItemMeta()) {
@@ -116,7 +117,15 @@ public class PortableHorses extends JavaPlugin implements Listener {
             if (lore != null) {
                 NBTTagCompound tag = nbtFromLore(lore);
                 debug("Restoring Horse: " + tag.toString());
+                double hp = -1;
+                if (tag.hasKey("currentHP")) {
+                    hp = tag.getDouble("currentHP");
+                    tag.remove("currentHP");
+                }
                 eh.a(tag);
+                if (hp != -1) {
+                    horse.setHealth(hp);
+                }
             }
         }
     }
