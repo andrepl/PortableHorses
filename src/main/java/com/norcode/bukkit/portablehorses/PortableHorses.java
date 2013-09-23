@@ -298,6 +298,8 @@ public class PortableHorses extends JavaPlugin implements Listener {
             }
             saveToSaddle(horse, saddle);
             horse.remove();
+        } else {
+            event.setCancelled(true);
         }
     }
 
