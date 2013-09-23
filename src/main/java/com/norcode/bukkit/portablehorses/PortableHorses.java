@@ -239,9 +239,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
             debug("Cursor:" + event.getCursor());
             debug("CurrentItem:" + event.getCurrentItem());
             debug("Click:" + event.getClick());
-
         }
-
     }
 
 
