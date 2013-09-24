@@ -1,18 +1,18 @@
 package com.norcode.bukkit.portablehorses;
 
 import net.h31ix.updater.Updater;
-import net.minecraft.server.v1_6_R3.EntityHorse;
-import net.minecraft.server.v1_6_R3.NBTCompressedStreamTools;
-import net.minecraft.server.v1_6_R3.NBTTagCompound;
+import net.minecraft.server.v1_6_R2.EntityHorse;
+import net.minecraft.server.v1_6_R2.NBTCompressedStreamTools;
+import net.minecraft.server.v1_6_R2.NBTTagCompound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
-import net.minecraft.v1_6_R3.org.bouncycastle.util.encoders.Base64;
+import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.craftbukkit.v1_6_R3.entity.CraftHorse;
+import org.bukkit.craftbukkit.v1_6_R2.entity.CraftHorse;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Horse;
 import org.bukkit.event.EventHandler;
@@ -202,6 +202,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     @EventHandler(priority= EventPriority.NORMAL, ignoreCancelled = true)
     public void onSaddleEvent(final InventoryClickEvent event) {
+
         if (!(event.getInventory() instanceof HorseInventory)) return;
         Horse horse = ((Horse) event.getInventory().getHolder());
         if (event.isShiftClick()) {
