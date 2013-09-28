@@ -5,16 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.norcode.bukkit.portablehorses</groupId>
-    <artifactId>PortableHorses</artifactId>
-    <version>0.1.14-SNAPSHOT</version>
+    <artifactId>PortableHorses-parent</artifactId>
+    <packaging>pom</packaging>
+    <version>parent</version>
+    <modules>
+        <module>API</module>
+        <module>Plugin</module>
+        <module>v1_6_R2</module>
+        <module>v1_6_R3</module>
+    </modules>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.authors>metalhedd</project.authors>
-        <project.main>com.norcode.bukkit.portablehorses.PortableHorses</project.main>
-        <project.description>Carry your horse in your back pocket.</project.description>
-        <project.depend>[ProtocolLib]</project.depend>
-    </properties>
     <build>
         <resources>
             <resource>
@@ -45,21 +45,4 @@
         <url>http://repo.comphenix.net/content/groups/public</url>
         </repository>
     </repositories>
-    <dependencies>
-        <dependency>
-            <groupId>org.bukkit</groupId>
-            <artifactId>bukkit</artifactId>
-            <version>1.6.4-R0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bukkit</groupId>
-            <artifactId>craftbukkit</artifactId>
-            <version>1.6.4-R0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.comphenix.protocol</groupId>
-            <artifactId>ProtocolLib</artifactId>
-            <version>2.7.0</version>
-        </dependency>
-    </dependencies>
 </project>

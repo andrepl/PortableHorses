@@ -19,11 +19,11 @@ permissions:
       portablehorses.unsaddle: true
       portablehorses.spawn: true
   portablehorses.saddle:
-    default: true
+    default: op
     description: allows saving horses to saddles.
   portablehorses.unsaddle:
-      default: true
+      default: op
       description: allows removing saddles from horses.
   portablehorses.spawn:
-      default: true
+      default: op
       description: allows spawning portable horses using the saddle.
