@@ -7,4 +7,5 @@ dist/*
 *.class
 build/*
 target/*
+*/target/*
 dependency-reduced-pom.xml
