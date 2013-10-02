@@ -152,6 +152,12 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
         if (!(event.getInventory() instanceof HorseInventory)) return;
         Horse horse = ((Horse) event.getInventory().getHolder());
+        if (debugMode) {
+            debug("Inventory Action:" + event.getAction());
+            debug("Cursor:" + event.getCursor());
+            debug("CurrentItem:" + event.getCurrentItem());
+            debug("Click:" + event.getClick());
+        }
         if (event.isShiftClick()) {
             if (event.getRawSlot() != 0) {
                 if (isPortableHorseSaddle(event.getCurrentItem())) {
@@ -182,11 +188,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
                     event.getAction() == InventoryAction.HOTBAR_MOVE_AND_READD) &&
                     event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
             onUnsaddled(event, horse, event.getCurrentItem());
-        } else if (debugMode) {
-            debug("Inventory Action:" + event.getAction());
-            debug("Cursor:" + event.getCursor());
-            debug("CurrentItem:" + event.getCurrentItem());
-            debug("Click:" + event.getClick());
         }
     }
 
@@ -269,6 +270,9 @@ public class PortableHorses extends JavaPlugin implements Listener {
     }
 
     private boolean isEmptyPortableHorseSaddle(ItemStack currentItem) {
+        if (currentItem.getType() != Material.SADDLE) {
+            return false;
+        }
         if (requireSpecialSaddle) {
             if (!currentItem.hasItemMeta()) {
                 return false;
