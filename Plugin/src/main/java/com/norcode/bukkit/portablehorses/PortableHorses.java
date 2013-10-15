@@ -1,6 +1,6 @@
 package com.norcode.bukkit.portablehorses;
 
-import net.h31ix.updater.Updater;
+import net.gravitydevelopment.updater.Updater;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerPickupItemEvent;
@@ -133,11 +133,11 @@ public class PortableHorses extends JavaPlugin implements Listener {
     public void doUpdater() {
         String autoUpdate = getConfig().getString("auto-update", "notify-only").toLowerCase();
         if (autoUpdate.equals("true")) {
-            updater = new Updater(this, "portable-horses", this.getFile(), Updater.UpdateType.DEFAULT, true);
+            updater = new Updater(this, 64321, this.getFile(), Updater.UpdateType.DEFAULT, true);
         } else if (autoUpdate.equals("false")) {
             getLogger().info("Auto-updater is disabled.  Skipping check.");
         } else {
-            updater = new Updater(this, "portable-horses", this.getFile(), Updater.UpdateType.NO_DOWNLOAD, true);
+            updater = new Updater(this, 64321, this.getFile(), Updater.UpdateType.NO_DOWNLOAD, true);
         }
     }
 
