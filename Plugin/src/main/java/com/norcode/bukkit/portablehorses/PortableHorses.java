@@ -3,6 +3,8 @@ package com.norcode.bukkit.portablehorses;
 import net.gravitydevelopment.updater.Updater;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
@@ -43,6 +45,8 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean allowNestedSaddles = false;
     private boolean requireSpecialSaddle = false;
     private boolean craftSpecialSaddle = false;
+    private boolean allowSaddleRemoval = true;
+
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
     private ShapedRecipe specialSaddleRecipe;
@@ -110,6 +114,8 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.allowNestedSaddles = getConfig().getBoolean("allow-nested-saddles", false);
         this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
+        this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
+
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
         Iterator<Recipe> it = getServer().recipeIterator();
@@ -144,6 +150,25 @@ public class PortableHorses extends JavaPlugin implements Listener {
     public void debug(String s) {
         if (debugMode) {
             getLogger().info(s);
+        }
+    }
+
+    @EventHandler
+    public void onClickHorse(EntityDamageByEntityEvent event) {
+        if (!allowSaddleRemoval) return;
+        if (event.getDamager() instanceof Player) {
+            if (event.getEntity() instanceof Horse) {
+                Player p = (Player) event.getDamager();
+                if (p.isSneaking()) {
+                    event.setCancelled(true);
+                    Horse h = (Horse) event.getEntity();
+                    if (isPortableHorseSaddle(h.getInventory().getSaddle())) {
+                        // Remove the saddle and 'disenchant' it.
+                        h.getInventory().setSaddle(null);
+                        h.getWorld().dropItem(h.getLocation(), new ItemStack(getEmptyPortableHorseSaddle()));
+                    }
+                }
+            }
         }
     }
 

@@ -7,4 +7,4 @@ require-special-saddle: false
 craft-special-saddle: false
 recipe-extra-item: ENDER_PEARL
 use-permissions: true
-
+allow-saddle-removal: true
