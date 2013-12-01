@@ -5,7 +5,7 @@
     <artifactId>PortableHorses</artifactId>
     <packaging>jar</packaging>
     <name>PortableHorses</name>
-    <version>0.2.3-SNAPSHOT</version> <!-- This is where I track the version -->
+    <version>0.2.3</version> <!-- This is where I track the version -->
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -23,6 +23,14 @@
     </repositories>
 
     <dependencies>
+
+        <dependency>
+            <groupId>com.norcode.bukkit.portablehorses</groupId>
+            <artifactId>PortableHorses-v1_7_R1</artifactId>
+            <version>v1_7_R1</version>
+            <type>jar</type>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>com.norcode.bukkit.portablehorses</groupId>
             <artifactId>PortableHorses-v1_6_R3</artifactId>

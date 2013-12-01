@@ -4,7 +4,6 @@ import net.gravitydevelopment.updater.Updater;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
@@ -37,7 +36,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
                         Material.BREWING_STAND, Material.ANVIL, Material.BED_BLOCK, Material.FURNACE, Material.BURNING_FURNACE);
 
     private Updater updater;
-    private PacketListener packetListener;
+    private IPacketListener packetListener;
     private boolean debugMode = false;
     private boolean usePermissions = true;
     private boolean storeArmor = true;
@@ -71,14 +70,38 @@ public class PortableHorses extends JavaPlugin implements Listener {
         getConfig().options().copyDefaults(true);
         saveConfig();
         initializeNMSHandler();
-        reloadConfig();
-        this.packetListener = new PacketListener(this);
+        initializePacketListener();
         doUpdater();
         getServer().getPluginManager().registerEvents(this, this);
 
     }
 
-    private void initializeNMSHandler() {
+	private void initializePacketListener() {
+		String packageName = this.getServer().getClass().getPackage().getName();
+		// Get full package string of CraftServer.
+		// org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
+		String version = packageName.substring(packageName.lastIndexOf('.') + 1);
+		// Get the last element of the package
+		if (version.equals("craftbukkit")) { // If the last element of the package was "craftbukkit" we are now pre-refactor
+			version = "pre";
+		}
+		try {
+			final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + version + ".PacketListener");
+			// Check if we have a NMSHandler class at that location.
+			if (IPacketListener.class.isAssignableFrom(clazz)) { // Make sure it actually implements NMS
+				this.packetListener = (IPacketListener) clazz.getConstructor(JavaPlugin.class).newInstance(this); // Set our handler
+			}
+		} catch (final Exception e) {
+			getLogger().log(Level.SEVERE, "Exception loading implementation: ", e);
+
+			this.getLogger().severe("Could not find support for this craftbukkit version " + version + ".");
+			this.getLogger().info("Check for updates at http://dev.bukktit.org/bukkit-plugins/portable-horses/");
+			this.setEnabled(false);
+			return;
+		}
+	}
+
+	private void initializeNMSHandler() {
         String packageName = this.getServer().getClass().getPackage().getName();
         // Get full package string of CraftServer.
         // org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
@@ -101,7 +124,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
             this.setEnabled(false);
             return;
         }
-        this.getLogger().info("Loading support for " + (version.equals("pre") ? "v1_4_5_pre" : version));
     }
 
     @Override
@@ -119,17 +141,24 @@ public class PortableHorses extends JavaPlugin implements Listener {
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
         Iterator<Recipe> it = getServer().recipeIterator();
-        while (it.hasNext()) {
-            Recipe r = it.next();
-            if (r.equals(this.specialSaddleRecipe)) {
-                if (!craftSpecialSaddle) {
-                    it.remove();
-                    break;
-                } else {
-                    found = true;
+        try {
+            while (it.hasNext()) {
+                Recipe r = it.next();
+                if (r.equals(this.specialSaddleRecipe)) {
+                    if (!craftSpecialSaddle) {
+                        it.remove();
+                        break;
+                    } else {
+                        found = true;
+                    }
                 }
             }
+        } catch (AbstractMethodError ex) {
+            getLogger().warning("abstract method error");
         }
+
+
+
         if (craftSpecialSaddle && !found) {
             getServer().addRecipe(this.getSpecialSaddleRecipe());
         }

@@ -27,6 +27,7 @@
             <version>LATEST</version>
             <type>jar</type>
         </dependency>
+
     </dependencies>
 
 </project>
