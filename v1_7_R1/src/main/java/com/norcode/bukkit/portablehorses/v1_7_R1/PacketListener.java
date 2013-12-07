@@ -48,7 +48,6 @@ public class PacketListener implements IPacketListener {
 		protocolManager.addPacketListener(new PacketAdapter(params) {
 			@Override
 			public void onPacketSending(PacketEvent event) {
-				getPlugin().getLogger().info("sending packet" + event.getPacketType());
 				PacketContainer packet = event.getPacket();
 					Player player = event.getPlayer();
 					if (event.getPacketType().equals(PacketType.Play.Server.SET_SLOT)) {
