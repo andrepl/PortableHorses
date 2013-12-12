@@ -66,7 +66,6 @@ public class PacketListener implements IPacketListener {
 						if (packetName.equals("MC|TrList")) {
 							try {
 								byte[] result = processMerchantList(packet.getByteArrays().read(0));
-								packet.getIntegers().write(0, result.length);
 								packet.getByteArrays().write(0, result);
 							} catch (IOException e) {
 								plugin.getLogger().warning("Couldn't access merchant list");
