@@ -294,9 +294,11 @@ public class PortableHorses extends JavaPlugin implements Listener {
             if (!storeInventory && horse.isCarryingChest()) {
                 ItemStack toDrop;
                 for (int i=2;i<horse.getInventory().getContents().length;i++) {
-                    toDrop = horse.getInventory().getItem(i);
-                    horse.getWorld().dropItem(horse.getLocation(), toDrop);
-                    horse.getInventory().setItem(i, null);
+					toDrop = horse.getInventory().getItem(i);
+					if (toDrop != null) {
+                    	horse.getWorld().dropItem(horse.getLocation(), toDrop);
+						horse.getInventory().setItem(i, null);
+					}
                 }
             }
             nmsHandler.saveToSaddle(horse, saddle);
