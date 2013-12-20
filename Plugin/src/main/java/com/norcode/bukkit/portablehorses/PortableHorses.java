@@ -45,6 +45,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean requireSpecialSaddle = false;
     private boolean craftSpecialSaddle = false;
     private boolean allowSaddleRemoval = true;
+	private boolean showExtraDetail = true;
 
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
@@ -137,6 +138,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
+		this.showExtraDetail = getConfig().getBoolean("show-extra-detail", true);
 
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;

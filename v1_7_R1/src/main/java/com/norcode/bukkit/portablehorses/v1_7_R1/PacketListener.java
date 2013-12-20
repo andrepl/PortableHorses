@@ -7,9 +7,23 @@ import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.utility.StreamSerializer;
+import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import com.comphenix.protocol.wrappers.nbt.*;
+import com.comphenix.protocol.wrappers.nbt.io.NbtTextSerializer;
 import com.norcode.bukkit.portablehorses.IPacketListener;
 import com.norcode.bukkit.portablehorses.NMS;
+import net.minecraft.server.v1_7_R1.ChatClickable;
+import net.minecraft.server.v1_7_R1.ChatComponentText;
+import net.minecraft.server.v1_7_R1.ChatDeserializer;
+import net.minecraft.server.v1_7_R1.ChatHoverable;
+import net.minecraft.server.v1_7_R1.ChatModifier;
+import net.minecraft.server.v1_7_R1.ChatSerializer;
+import net.minecraft.server.v1_7_R1.EnumHoverAction;
+import net.minecraft.server.v1_7_R1.IChatBaseComponent;
+import net.minecraft.server.v1_7_R1.MojangsonParser;
+import net.minecraft.server.v1_7_R1.NBTTagCompound;
+import net.minecraft.server.v1_7_R1.NBTTagList;
+import net.minecraft.server.v1_7_R1.NBTTagString;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -25,6 +39,7 @@ import java.util.*;
 public class PacketListener implements IPacketListener {
 	public JavaPlugin plugin;
 	public ProtocolManager protocolManager;
+	private NbtTextSerializer serializer;
 
 	public PacketListener(JavaPlugin plugin) {
 		this.plugin = plugin;
@@ -34,7 +49,6 @@ public class PacketListener implements IPacketListener {
 	}
 
 	public void registerListeners() {
-
 		PacketAdapter.AdapterParameteters params = PacketAdapter.params()
 				.plugin(plugin)
 				.connectionSide(ConnectionSide.BOTH)
@@ -43,13 +57,25 @@ public class PacketListener implements IPacketListener {
 				.types(PacketType.Play.Client.SET_CREATIVE_SLOT,
 					   PacketType.Play.Server.SET_SLOT,
 					   PacketType.Play.Server.WINDOW_ITEMS,
-					   PacketType.Play.Server.CUSTOM_PAYLOAD);
+					   PacketType.Play.Server.CUSTOM_PAYLOAD,
+					   PacketType.Play.Server.CHAT);
 
 		protocolManager.addPacketListener(new PacketAdapter(params) {
 			@Override
 			public void onPacketSending(PacketEvent event) {
 				PacketContainer packet = event.getPacket();
 					Player player = event.getPlayer();
+					if (event.getPacketType().equals(PacketType.Play.Server.CHAT)) {
+						StructureModifier<WrappedChatComponent> cm = packet.getChatComponents();
+						WrappedChatComponent unfiltered;
+						WrappedChatComponent filtered;
+						for (int i=0; i<cm.size(); i++) {
+							unfiltered = cm.read(i);
+							cm.write(i, WrappedChatComponent.fromHandle(
+									filterChatComponent((IChatBaseComponent) cm.read(i).getHandle())));
+						}
+
+					} else
 					if (event.getPacketType().equals(PacketType.Play.Server.SET_SLOT)) {
 						StructureModifier<ItemStack> sm = packet.getItemModifier();
 						for (int i = 0; i < sm.size(); i++) {
@@ -100,6 +126,38 @@ public class PacketListener implements IPacketListener {
 			}
 		});
 
+	}
+
+	private IChatBaseComponent filterChatComponent(IChatBaseComponent chat) {
+		ChatHoverable hover = chat.b().i();
+		if (hover != null && hover.a() == EnumHoverAction.SHOW_ITEM) {
+			NBTTagCompound stack = (NBTTagCompound) MojangsonParser.a(hover.b().e());
+			if (stack.getShort("id") == 329 && stack.hasKey("tag")) {
+				NBTTagCompound tag = stack.getCompound("tag");
+				if (tag.hasKey("display")) {
+					NBTTagCompound display = tag.getCompound("display");
+					if (display.hasKey("Lore")) {
+						NBTTagList lore = display.getList("Lore", 8);
+						NBTTagList newLore = new NBTTagList();
+						String line;
+						for (int i=0;i<lore.size();i++) {
+							line = lore.f(i);
+							if (line.startsWith(ChatColor.BLACK.toString())) {
+								continue;
+							}
+							newLore.add(new NBTTagString(line));
+						}
+						display.set("Lore", newLore);
+						chat.b().a(new ChatHoverable(EnumHoverAction.SHOW_ITEM, new ChatComponentText(stack.toString())));
+					}
+				}
+			}
+		}
+
+		for (IChatBaseComponent child: (List<IChatBaseComponent>) chat.a()) {
+			filterChatComponent(child);
+		}
+		return chat;
 	}
 
 	/**
