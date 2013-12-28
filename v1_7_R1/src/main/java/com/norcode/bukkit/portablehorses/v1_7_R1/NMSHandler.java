@@ -59,6 +59,7 @@ public class NMSHandler extends NMS {
         }
 		byte[] bytes = new byte[decoded.readableBytes()];
 		decoded.getBytes(0, bytes);
+		decoded.release();
 		NBTTagCompound tag = NBTCompressedStreamTools.a(bytes);
         return tag;
     }
