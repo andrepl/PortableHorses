@@ -34,6 +34,7 @@ public class NMSHandler extends NMS {
 		ByteBuf tagdata = Unpooled.wrappedBuffer(NBTCompressedStreamTools.a(tag));
 		LinkedList<String> lines = new LinkedList<String>();
         String encoded = Base64.encode(tagdata).toString(Charset.defaultCharset());
+		tagdata.release();
         while (encoded.length() > 32760) {
             lines.add(ChatColor.BLACK + encoded.substring(0, 32760));
             encoded = encoded.substring(32760);
@@ -59,8 +60,8 @@ public class NMSHandler extends NMS {
         }
 		byte[] bytes = new byte[decoded.readableBytes()];
 		decoded.getBytes(0, bytes);
-		decoded.release();
 		NBTTagCompound tag = NBTCompressedStreamTools.a(bytes);
+		decoded.release();
         return tag;
     }
 
