@@ -3,21 +3,24 @@ package com.norcode.bukkit.portablehorses.v1_7_R1;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.*;
+import com.comphenix.protocol.events.ListenerOptions;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.utility.StreamSerializer;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
-import com.comphenix.protocol.wrappers.nbt.*;
+import com.comphenix.protocol.wrappers.nbt.NbtCompound;
+import com.comphenix.protocol.wrappers.nbt.NbtFactory;
+import com.comphenix.protocol.wrappers.nbt.NbtList;
+import com.comphenix.protocol.wrappers.nbt.NbtType;
 import com.comphenix.protocol.wrappers.nbt.io.NbtTextSerializer;
 import com.norcode.bukkit.portablehorses.IPacketListener;
 import com.norcode.bukkit.portablehorses.NMS;
-import net.minecraft.server.v1_7_R1.ChatClickable;
 import net.minecraft.server.v1_7_R1.ChatComponentText;
-import net.minecraft.server.v1_7_R1.ChatDeserializer;
 import net.minecraft.server.v1_7_R1.ChatHoverable;
-import net.minecraft.server.v1_7_R1.ChatModifier;
-import net.minecraft.server.v1_7_R1.ChatSerializer;
 import net.minecraft.server.v1_7_R1.EnumHoverAction;
 import net.minecraft.server.v1_7_R1.IChatBaseComponent;
 import net.minecraft.server.v1_7_R1.MojangsonParser;
@@ -32,9 +35,14 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipe;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipeList;
 
-import java.io.*;
-
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 public class PacketListener implements IPacketListener {
 	public JavaPlugin plugin;
@@ -51,11 +59,8 @@ public class PacketListener implements IPacketListener {
 	public void registerListeners() {
 		PacketAdapter.AdapterParameteters params = PacketAdapter.params()
 				.plugin(plugin)
-				.connectionSide(ConnectionSide.BOTH)
 				.listenerPriority(ListenerPriority.HIGH)
-				.options(ListenerOptions.INTERCEPT_INPUT_BUFFER)
-				.types(PacketType.Play.Client.SET_CREATIVE_SLOT,
-					   PacketType.Play.Server.SET_SLOT,
+				.types(PacketType.Play.Server.SET_SLOT,
 					   PacketType.Play.Server.WINDOW_ITEMS,
 					   PacketType.Play.Server.CUSTOM_PAYLOAD,
 					   PacketType.Play.Server.CHAT);
@@ -99,6 +104,14 @@ public class PacketListener implements IPacketListener {
 						}
 					}
 			}
+		});
+		params = PacketAdapter.params()
+				.plugin(plugin)
+				.listenerPriority(ListenerPriority.HIGH)
+				.options(ListenerOptions.INTERCEPT_INPUT_BUFFER)
+				.types(PacketType.Play.Client.SET_CREATIVE_SLOT);
+
+		protocolManager.addPacketListener(new PacketAdapter(params) {
 
 			@Override
 			public void onPacketReceiving(PacketEvent event) {
