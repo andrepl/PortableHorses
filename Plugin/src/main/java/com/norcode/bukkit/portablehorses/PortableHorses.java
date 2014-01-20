@@ -16,14 +16,18 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.inventory.HorseInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.EnumSet;
@@ -53,6 +57,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean craftSpecialSaddle = false;
     private boolean allowSaddleRemoval = true;
 	private boolean showExtraDetail = true;
+	private boolean preventHorseTheft = false;
 
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
@@ -146,6 +151,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
 		this.showExtraDetail = getConfig().getBoolean("show-extra-detail", true);
+		this.preventHorseTheft = getConfig().getBoolean("prevent-horse-theft", false);
 
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
@@ -375,6 +381,58 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
+	@EventHandler(priority=EventPriority.HIGH)
+	public void mountHorse(VehicleEnterEvent event) {
+		debug("mountHorse");
+		if (!preventHorseTheft) return;
+		if (event.getEntered().getType().equals(EntityType.PLAYER)) {
+			final Player p = (Player) event.getEntered();
+			if (event.getVehicle().getType().equals(EntityType.HORSE)) {
+				Horse horse = ((Horse) event.getVehicle());
+				if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+					if (!p.equals(horse.getOwner()) &&
+							!p.hasPermission("portablehorse.override-owner")) {
+						p.sendMessage("This horse does not belong to you!");
+						event.setCancelled(true);
+						final Location prevLoc = (Location) p.getMetadata("pre-mount-location").get(0).value();
+						p.removeMetadata("pre-mount-location", this);
+						p.teleport(prevLoc);
+					}
+				}
+			}
+		}
+	}
+
+	@EventHandler(priority=EventPriority.HIGH)
+	public void onInventoryOpen(InventoryOpenEvent event) {
+		if (event.getInventory().getHolder() instanceof Horse) {
+			if (!preventHorseTheft) return;
+			final Player p = (Player) event.getPlayer();
+			Horse horse = ((Horse) event.getInventory().getHolder());
+			if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+				if (!p.equals(horse.getOwner()) && !p.hasPermission("portablehorse.override-owner")) {
+					p.sendMessage("This horse does not belong to you!");
+					event.setCancelled(true);
+				}
+			}
+		}
+	}
+
+	@EventHandler(priority=EventPriority.HIGH)
+	public void onInteractHorse(PlayerInteractEntityEvent event) {
+		if (!preventHorseTheft) return;
+		if (event.getRightClicked().getType().equals(EntityType.HORSE)) {
+			Horse horse = ((Horse) event.getRightClicked());
+			if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+				if (!event.getPlayer().equals(horse.getOwner()) &&
+						!event.getPlayer().hasPermission("portablehorse.override-owner")) {
+					event.getPlayer().setMetadata("pre-mount-location",
+							new FixedMetadataValue(this, event.getPlayer().getLocation().clone()));
+				}
+			}
+		}
+	}
+
     @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled = true)
     public void onClickSaddle(PlayerInteractEvent event) {
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
@@ -393,6 +451,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
                         nmsHandler.restoreHorseFromSaddle(event.getItem(), horse);
                         horse.getInventory().setSaddle(event.getItem());
                         event.getPlayer().setItemInHand(null);
+						horse.setOwner(event.getPlayer());
                     } else {
                         event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
                     }
