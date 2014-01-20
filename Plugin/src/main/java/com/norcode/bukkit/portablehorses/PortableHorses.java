@@ -190,7 +190,11 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
 	public static long decodeTimestamp(String s) {
 		String hexDigits = StringUtils.join(s.split("" + ChatColor.COLOR_CHAR));
-		return Integer.parseInt(hexDigits, 16) * 1000L;
+		try {
+			return Integer.parseInt(hexDigits, 16) * 1000L;
+		} catch (NumberFormatException ex) {
+			return 0;
+		}
 	}
 
 	public static String encodeTimestamp(long timeMillis) {
@@ -386,11 +390,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			final Player p = (Player) sender;
 
 			((Player) sender).setMetadata("portablehorses-override-owner", new FixedMetadataValue(this, System.currentTimeMillis()));
+			sender.sendMessage("PortableHorses: Override-mode activated.");
 			getServer().getScheduler().runTaskLater(this, new Runnable() {
 				@Override
 				public void run() {
 					if (p.isOnline()) {
 						p.removeMetadata("portablehorses-override-owner", PortableHorses.this);
+						p.sendMessage("PortableHorses: Override-mode ended.");
 					}
 				}
 			}, ticks);
