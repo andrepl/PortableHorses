@@ -6,8 +6,8 @@ depend: ${project.depend}
 commands:
   portablehorses:
     aliases: [ph]
-    usage: /<command> reloadconfig
-    description: Reloads the config file.
+    usage: /<command> [reloadconfig|override]
+    description: PortableHorses admin commands
     permission: portablehorses.admin
 
 permissions:

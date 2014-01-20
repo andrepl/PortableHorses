@@ -91,6 +91,7 @@ public class NMSHandler extends NMS {
 						decFormatter.format(attr.getDouble("Base") * 5.1D));
 			}
 		}
+
 		// HP
 		String  hp = decFormatter.format(tag.getDouble("currentHP"));
 		String maxHP = decFormatter.format(tag.getFloat("HealF"));

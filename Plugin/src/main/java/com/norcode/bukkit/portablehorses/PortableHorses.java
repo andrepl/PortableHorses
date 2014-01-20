@@ -1,27 +1,18 @@
 package com.norcode.bukkit.portablehorses;
 
 import net.gravitydevelopment.updater.Updater;
+import org.apache.commons.lang.StringUtils;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.entity.EntityType;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.inventory.InventoryAction;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
-import org.bukkit.event.vehicle.VehicleEnterEvent;
-import org.bukkit.inventory.HorseInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
@@ -30,43 +21,43 @@ import org.bukkit.material.MaterialData;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class PortableHorses extends JavaPlugin implements Listener {
 
-
-    private static final EnumSet<Material> INTERACTIVE_BLOCKS = EnumSet.of(Material.WOODEN_DOOR, Material.IRON_DOOR_BLOCK, Material.FENCE_GATE, Material.WORKBENCH,
-                        Material.ENCHANTMENT_TABLE, Material.ENDER_CHEST, Material.ENDER_PORTAL_FRAME, Material.CHEST, Material.TRAPPED_CHEST, Material.REDSTONE_COMPARATOR_OFF,
-                        Material.REDSTONE_COMPARATOR_ON, Material.DIODE_BLOCK_OFF, Material.DIODE_BLOCK_ON, Material.BEACON, Material.TRAP_DOOR, Material.NOTE_BLOCK, Material.JUKEBOX,
-                        Material.BREWING_STAND, Material.ANVIL, Material.BED_BLOCK, Material.FURNACE, Material.BURNING_FURNACE, Material.WOOD_BUTTON, Material.STONE_BUTTON, Material.LEVER);
-
     private Updater updater;
     private IPacketListener packetListener;
-    private boolean debugMode = false;
-    private boolean usePermissions = true;
-    private boolean storeArmor = true;
-    private boolean storeInventory = true;
-    private boolean allowNestedSaddles = false;
+	private long expiryMillis = TimeUnit.DAYS.toMillis(90);
+	public boolean debugMode = false;
+    public boolean usePermissions = true;
+    public boolean storeArmor = true;
+    public boolean storeInventory = true;
+    public boolean allowNestedSaddles = false;
     private boolean requireSpecialSaddle = false;
     private boolean craftSpecialSaddle = false;
-    private boolean allowSaddleRemoval = true;
+    public boolean allowSaddleRemoval = true;
 	private boolean showExtraDetail = true;
-	private boolean preventHorseTheft = false;
+	public boolean preventHorseTheft = false;
 
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
     private ShapedRecipe specialSaddleRecipe;
     private NMS nmsHandler;
 
+	public NMS getNmsHandler() {
+		return nmsHandler;
+	}
 
-
-    private Recipe getSpecialSaddleRecipe() {
+	private Recipe getSpecialSaddleRecipe() {
         if (this.specialSaddleRecipe == null) {
             ItemStack result = getEmptyPortableHorseSaddle();
             this.specialSaddleRecipe = new ShapedRecipe(result);
@@ -85,8 +76,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         initializeNMSHandler();
         initializePacketListener();
         doUpdater();
-        getServer().getPluginManager().registerEvents(this, this);
-
+        getServer().getPluginManager().registerEvents(new EventListener(this), this);
     }
 
 	private void initializePacketListener() {
@@ -152,6 +142,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
 		this.showExtraDetail = getConfig().getBoolean("show-extra-detail", true);
 		this.preventHorseTheft = getConfig().getBoolean("prevent-horse-theft", false);
+		this.expiryMillis = timeDeltaToMillis(getConfig().getString("theft-prevention-expiry", "90d"));
 
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
@@ -197,135 +188,67 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
-    public void onClickHorse(EntityDamageByEntityEvent event) {
-        if (!allowSaddleRemoval) return;
-        if (event.getDamager() instanceof Player) {
-            if (event.getEntity() instanceof Horse) {
-                Player p = (Player) event.getDamager();
-                if (p.isSneaking()) {
-                    event.setCancelled(true);
-                    Horse h = (Horse) event.getEntity();
-                    if (isPortableHorseSaddle(h.getInventory().getSaddle())) {
-                        // Remove the saddle and 'disenchant' it.
-                        h.getInventory().setSaddle(null);
-                        h.getWorld().dropItem(h.getLocation(), new ItemStack(getEmptyPortableHorseSaddle()));
-                    }
-                }
-            }
-        }
-    }
+	public long decodeTimestamp(String s) {
+		String hexDigits = StringUtils.join(s.split("" + ChatColor.COLOR_CHAR));
+		return Integer.parseInt(hexDigits, 16) * 1000;
+	}
 
-    @EventHandler(priority= EventPriority.NORMAL, ignoreCancelled = true)
-    public void onSaddleEvent(final InventoryClickEvent event) {
+	public String encodeTimestamp(long timeMillis) {
+		int ts = (int) timeMillis/1000;
+		StringBuilder sb = new StringBuilder();
+		for (char c: Integer.toHexString(ts).toCharArray()) {
+			sb.append(ChatColor.COLOR_CHAR);
+			sb.append(c);
+		}
+		return sb.toString();
+	}
 
-        if (!(event.getInventory() instanceof HorseInventory)) return;
-        Horse horse = ((Horse) event.getInventory().getHolder());
-        if (debugMode) {
-            debug("Inventory Action:" + event.getAction());
-            debug("Cursor:" + event.getCursor());
-            debug("CurrentItem:" + event.getCurrentItem());
-            debug("Click:" + event.getClick());
-        }
-        if (event.isShiftClick()) {
-            if (event.getRawSlot() != 0) {
-                if (isPortableHorseSaddle(event.getCurrentItem())) {
-                    event.setCancelled(true);
-                } else if (isEmptyPortableHorseSaddle(event.getCurrentItem()) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
-                    onSaddled(event, horse, event.getCurrentItem());
-                }
-            } else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && isPortableHorseSaddle(event.getCurrentItem())) {
-                // Removing a saddle by shift-click.
-                onUnsaddled(event, horse, event.getCurrentItem());
-            }
-        } else if (event.getAction() == InventoryAction.PLACE_ALL || event.getAction() == InventoryAction.PLACE_ONE) {
-            if (event.getRawSlot() == 0 && event.getCurrentItem().getType() == Material.AIR) {
-                if (isPortableHorseSaddle(event.getCursor())) {
-                    event.setCancelled(true);
-                } else if (isEmptyPortableHorseSaddle(event.getCursor())) {
-                    debug("Saddling!");
-                    onSaddled(event, horse, event.getCursor());
-                }
-            }
-        } else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
-            if (event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
-                // removed a saddle.
-                onUnsaddled(event, horse, event.getCurrentItem());
-            }
-        } else if ((event.getAction() == InventoryAction.HOTBAR_SWAP ||
-                    event.getAction() == InventoryAction.DROP_ONE_SLOT ||
-                    event.getAction() == InventoryAction.HOTBAR_MOVE_AND_READD) &&
-                    event.getRawSlot() == 0 && isPortableHorseSaddle(event.getCurrentItem())) {
-            onUnsaddled(event, horse, event.getCurrentItem());
-        }
-    }
-
-
-    @EventHandler(priority=EventPriority.HIGH)
-    public void onInventoryClick(final InventoryClickEvent event) {
-
-        if (!(event.getInventory() instanceof HorseInventory)) return;
-        if (allowNestedSaddles) {
-            return;
-        }
-        Horse horse = ((Horse) event.getInventory().getHolder());
-        if (!horse.isCarryingChest()) {
-            return;
-        }
-        getServer().getScheduler().runTaskLater(this, new Runnable() {
-            @Override
-            public void run() {
-                for (int i=1;i<event.getInventory().getSize();i++) {
-                    ItemStack s = ((HorseInventory) event.getInventory()).getItem(i);
-                    if (s != null && isPortableHorseSaddle(s)) {
-                        event.getInventory().setItem(i, null);
-                        event.getWhoClicked().getInventory().addItem(s);
-                        ((Player) event.getWhoClicked()).updateInventory();
-                    }
-                }
-            }
-        }, 0);
-    }
-
-
-    public void onSaddled(InventoryClickEvent event, Horse horse, ItemStack saddle) {
-        debug(horse + "Saddled.");
-        if (!usePermissions || event.getWhoClicked().hasPermission("portablehorses.saddle")) {
-            nmsHandler.saveToSaddle(horse, saddle);
-            horse.getInventory().setSaddle(saddle);
-            event.setCurrentItem(null);
-        }
-    }
-
-    public void onUnsaddled(InventoryClickEvent event, Horse horse, ItemStack saddle) {
-        debug(horse + "Unsaddled.");
-        if (!usePermissions || event.getWhoClicked().hasPermission("portablehorses.unsaddle")) {
-            if (!storeArmor) {
-                if (horse.getInventory().getArmor() != null && horse.getInventory().getArmor().getType() != Material.AIR) {
-                    horse.getWorld().dropItem(horse.getLocation(), horse.getInventory().getArmor());
-                    horse.getInventory().setArmor(null);
-                }
-            }
-            if (!storeInventory && horse.isCarryingChest()) {
-                ItemStack toDrop;
-                for (int i=2;i<horse.getInventory().getContents().length;i++) {
-					toDrop = horse.getInventory().getItem(i);
-					if (toDrop != null) {
-                    	horse.getWorld().dropItem(horse.getLocation(), toDrop);
-						horse.getInventory().setItem(i, null);
+	public boolean canUseHorse(Player player, Horse horse) {
+		ItemStack saddle = horse.getInventory().getSaddle();
+		if (isPortableHorseSaddle(saddle)) {
+			if (preventHorseTheft) {
+				if (player.equals(horse.getOwner()) || isAdminMode(player)) {
+					return true;
+				}
+				if (!horse.hasMetadata("last-owner-interact")) {
+					ItemMeta meta = saddle.getItemMeta();
+					List<String> lore = meta.getLore();
+					String line1 = lore.get(0);
+					if (line1.contains(ChatColor.RESET.toString())) {
+						String timestamp = lore.get(0).substring(NMS.LORE_PREFIX.length())
+								.split(ChatColor.RESET.toString())[0];
+						horse.setMetadata("last-owner-interact",
+								new FixedMetadataValue(this, decodeTimestamp(timestamp)));
+					} else {
+						horse.setMetadata("last-owner-interact", new FixedMetadataValue(this, 0));
 					}
-                }
-            }
-            nmsHandler.saveToSaddle(horse, saddle);
-            horse.remove();
-        } else {
-            event.setCancelled(true);
-        }
-    }
+
+				}
+				Long lastInteractedByOwner = horse.getMetadata("last-owner-interact").get(0).asLong();
+				if (System.currentTimeMillis() - lastInteractedByOwner > expiryMillis) {
+					// This horse hasnt been touched by it's owner in a while
+					// he can be stolen.
+					return true;
+				} else {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private boolean isAdminMode(Player player) {
+		if (!player.hasPermission("portablehorses.admin")) {
+			return false;
+		}
+		if (!player.hasMetadata("portablehorses-override-owner")) {
+			return false;
+		}
+		return true;
+	}
 
     public ItemStack getEmptyPortableHorseSaddle() {
         PlayerPickupItemEvent e;
-
         if (requireSpecialSaddle) {
             ItemStack s = new ItemStack(Material.SADDLE);
             ItemMeta meta = getServer().getItemFactory().getItemMeta(Material.SADDLE);
@@ -340,7 +263,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-    private boolean isEmptyPortableHorseSaddle(ItemStack currentItem) {
+    public boolean isEmptyPortableHorseSaddle(ItemStack currentItem) {
         if (currentItem.getType() != Material.SADDLE) {
             return false;
         }
@@ -357,7 +280,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-    private boolean isPortableHorseSaddle(ItemStack currentItem) {
+    public boolean isPortableHorseSaddle(ItemStack currentItem) {
         if (currentItem != null && currentItem.getType().equals(Material.SADDLE)) {
             if (currentItem.hasItemMeta()) {
                 if (currentItem.getItemMeta().hasLore()) {
@@ -371,98 +294,24 @@ public class PortableHorses extends JavaPlugin implements Listener {
         return false;
     }
 
-    @EventHandler
-    public void onEntityDeath(EntityDeathEvent event) {
-        if (event.getEntity() instanceof Horse) {
-            Horse h = (Horse) event.getEntity();
-            if (isPortableHorseSaddle(h.getInventory().getSaddle())) {
-                h.getInventory().setSaddle(getEmptyPortableHorseSaddle());
-            }
-        }
-    }
-
-	@EventHandler(priority=EventPriority.HIGH)
-	public void mountHorse(VehicleEnterEvent event) {
-		debug("mountHorse");
-		if (!preventHorseTheft) return;
-		if (event.getEntered().getType().equals(EntityType.PLAYER)) {
-			final Player p = (Player) event.getEntered();
-			if (event.getVehicle().getType().equals(EntityType.HORSE)) {
-				Horse horse = ((Horse) event.getVehicle());
-				if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
-					if (!p.equals(horse.getOwner()) &&
-							!p.hasPermission("portablehorse.override-owner")) {
-						p.sendMessage("This horse does not belong to you!");
-						event.setCancelled(true);
-						final Location prevLoc = (Location) p.getMetadata("pre-mount-location").get(0).value();
-						p.removeMetadata("pre-mount-location", this);
-						p.teleport(prevLoc);
-					}
-				}
-			}
+	public void saveOwnerUse(Horse horse) {
+		ItemMeta meta = horse.getInventory().getSaddle().getItemMeta();
+		List<String> lore = meta.getLore();
+		String line1 = lore.get(0);
+		line1 = line1.substring(NMS.LORE_PREFIX.length());
+		if (line1.contains(ChatColor.RESET.toString())) {
+			line1 = line1.split(ChatColor.RESET.toString(),2)[1];
 		}
+		long  now = System.currentTimeMillis();
+		line1 = NMS.LORE_PREFIX + encodeTimestamp(now) +
+				ChatColor.RESET + line1;
+		lore.set(0, line1);
+		meta.setLore(lore);
+		horse.getInventory().getSaddle().setItemMeta(meta);
+		horse.setMetadata("last-owner-interact", new FixedMetadataValue(this, now));
 	}
 
-	@EventHandler(priority=EventPriority.HIGH)
-	public void onInventoryOpen(InventoryOpenEvent event) {
-		if (event.getInventory().getHolder() instanceof Horse) {
-			if (!preventHorseTheft) return;
-			final Player p = (Player) event.getPlayer();
-			Horse horse = ((Horse) event.getInventory().getHolder());
-			if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
-				if (!p.equals(horse.getOwner()) && !p.hasPermission("portablehorse.override-owner")) {
-					p.sendMessage("This horse does not belong to you!");
-					event.setCancelled(true);
-				}
-			}
-		}
-	}
-
-	@EventHandler(priority=EventPriority.HIGH)
-	public void onInteractHorse(PlayerInteractEntityEvent event) {
-		if (!preventHorseTheft) return;
-		if (event.getRightClicked().getType().equals(EntityType.HORSE)) {
-			Horse horse = ((Horse) event.getRightClicked());
-			if (isPortableHorseSaddle(horse.getInventory().getSaddle())) {
-				if (!event.getPlayer().equals(horse.getOwner()) &&
-						!event.getPlayer().hasPermission("portablehorse.override-owner")) {
-					event.getPlayer().setMetadata("pre-mount-location",
-							new FixedMetadataValue(this, event.getPlayer().getLocation().clone()));
-				}
-			}
-		}
-	}
-
-    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled = true)
-    public void onClickSaddle(PlayerInteractEvent event) {
-        if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
-                if (INTERACTIVE_BLOCKS.contains(event.getClickedBlock().getType())) {
-                    return;
-                }
-                if (event.getPlayer().hasPermission("portablehorses.spawn")) {
-                    Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
-					if (!isValidSpawnLocation(spawnLoc)) {
-						event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
-						return;
-					}
-                    Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
-                    if (horse.isValid()) {
-                        nmsHandler.restoreHorseFromSaddle(event.getItem(), horse);
-                        horse.getInventory().setSaddle(event.getItem());
-                        event.getPlayer().setItemInHand(null);
-						horse.setOwner(event.getPlayer());
-                    } else {
-                        event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
-                    }
-                } else {
-                    event.getPlayer().sendMessage("Sorry, you don't have permission to spawn a horse.");
-                }
-            }
-        }
-    }
-
-	private boolean isValidSpawnLocation(Location spawnLoc) {
+	public boolean isValidSpawnLocation(Location spawnLoc) {
 		Block b = spawnLoc.getBlock();
 		return (!b.getType().isSolid() &&
 				!b.getRelative(BlockFace.UP).getType().isSolid());
@@ -488,4 +337,82 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
         return md;
     }
+
+	private static Pattern TIMEDELTA_PATTERN = Pattern.compile("(\\d+)\\s?(d|h|m|s|ms)", Pattern.CASE_INSENSITIVE);
+
+	public static long timeDeltaToMillis(String s) {
+		Matcher m = TIMEDELTA_PATTERN.matcher(s);
+		long millis = 0;
+		TimeUnit unit;
+		while (m.find()) {
+			if (m.group(2).toLowerCase().equals("d")) {
+				unit = TimeUnit.DAYS;
+			} else if (m.group(2).toLowerCase().equals("h")) {
+				unit = TimeUnit.HOURS;
+			} else if (m.group(2).toLowerCase().equals("m")) {
+				unit = TimeUnit.MINUTES;
+			} else if (m.group(2).toLowerCase().equals("s")) {
+				unit = TimeUnit.SECONDS;
+			} else if (m.group(2).toLowerCase().equals("ms")) {
+				unit = TimeUnit.MILLISECONDS;
+			} else {
+				continue;
+			}
+			millis += unit.toMillis(Long.parseLong(m.group(1)));
+		}
+		return millis;
+	}
+
+	@Override
+	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		if (args.length > 0 && args[0].equalsIgnoreCase("override")) {
+			long ticks = 20*60;
+			if (args.length > 1) {
+				try {
+					ticks = timeDeltaToMillis(StringUtils.join(args, "", 1, args.length)) / 50;
+					if (ticks < 5) {
+						sender.sendMessage("Duration must be at least 5 seconds" + args[1]);
+						return true;
+					}
+				} catch (IllegalArgumentException ex) {
+					sender.sendMessage("Expecting number, not " + args[1]);
+					return true;
+				}
+			}
+			if (!(sender instanceof Player)) {
+				sender.sendMessage("This command cannot be run from the console.");
+				return true;
+			}
+			final Player p = (Player) sender;
+
+			((Player) sender).setMetadata("portablehorses-override-owner", new FixedMetadataValue(this, System.currentTimeMillis()));
+			getServer().getScheduler().runTaskLater(this, new Runnable() {
+				@Override
+				public void run() {
+					if (p.isOnline()) {
+						p.removeMetadata("portablehorses-override-owner", PortableHorses.this);
+					}
+				}
+			}, ticks);
+			return true;
+		} else if (args.length > 0 && args[0].equalsIgnoreCase("reloadconfig")) {
+			reloadConfig();
+			sender.sendMessage("PortableHorses configuration reloaded.");
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+		List<String> results = new ArrayList<String>();
+		if (args.length == 1) {
+			if ("override".startsWith(args[0].toLowerCase())) {
+				results.add("override");
+			} else if ("reloadconfig".startsWith(args[0].toLowerCase())) {
+				results.add("reloadconfig");
+			}
+		}
+		return results;
+	}
 }
