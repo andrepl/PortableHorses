@@ -188,13 +188,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-	public long decodeTimestamp(String s) {
+	public static long decodeTimestamp(String s) {
 		String hexDigits = StringUtils.join(s.split("" + ChatColor.COLOR_CHAR));
-		return Integer.parseInt(hexDigits, 16) * 1000;
+		return Integer.parseInt(hexDigits, 16) * 1000L;
 	}
 
-	public String encodeTimestamp(long timeMillis) {
-		int ts = (int) timeMillis/1000;
+	public static String encodeTimestamp(long timeMillis) {
+		int ts = (int) (timeMillis/1000);
 		StringBuilder sb = new StringBuilder();
 		for (char c: Integer.toHexString(ts).toCharArray()) {
 			sb.append(ChatColor.COLOR_CHAR);
@@ -215,7 +215,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
 					List<String> lore = meta.getLore();
 					String line1 = lore.get(0);
 					if (line1.contains(ChatColor.RESET.toString())) {
-						String timestamp = lore.get(0).substring(NMS.LORE_PREFIX.length())
+						String timestamp = line1.substring(NMS.LORE_PREFIX.length())
 								.split(ChatColor.RESET.toString())[0];
 						horse.setMetadata("last-owner-interact",
 								new FixedMetadataValue(this, decodeTimestamp(timestamp)));
