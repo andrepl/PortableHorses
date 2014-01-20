@@ -1,30 +1,37 @@
 package com.norcode.bukkit.portablehorses;
 
 import net.gravitydevelopment.updater.Updater;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Horse;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.HorseInventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 
 public class PortableHorses extends JavaPlugin implements Listener {
@@ -33,7 +40,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private static final EnumSet<Material> INTERACTIVE_BLOCKS = EnumSet.of(Material.WOODEN_DOOR, Material.IRON_DOOR_BLOCK, Material.FENCE_GATE, Material.WORKBENCH,
                         Material.ENCHANTMENT_TABLE, Material.ENDER_CHEST, Material.ENDER_PORTAL_FRAME, Material.CHEST, Material.TRAPPED_CHEST, Material.REDSTONE_COMPARATOR_OFF,
                         Material.REDSTONE_COMPARATOR_ON, Material.DIODE_BLOCK_OFF, Material.DIODE_BLOCK_ON, Material.BEACON, Material.TRAP_DOOR, Material.NOTE_BLOCK, Material.JUKEBOX,
-                        Material.BREWING_STAND, Material.ANVIL, Material.BED_BLOCK, Material.FURNACE, Material.BURNING_FURNACE);
+                        Material.BREWING_STAND, Material.ANVIL, Material.BED_BLOCK, Material.FURNACE, Material.BURNING_FURNACE, Material.WOOD_BUTTON, Material.STONE_BUTTON, Material.LEVER);
 
     private Updater updater;
     private IPacketListener packetListener;
@@ -368,7 +375,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority=EventPriority.MONITOR, ignoreCancelled = true)
     public void onClickSaddle(PlayerInteractEvent event) {
         if (event.getItem() != null && event.getItem().getType().equals(Material.SADDLE)) {
             if (event.getAction() == Action.RIGHT_CLICK_BLOCK && isPortableHorseSaddle(event.getItem())) {
@@ -377,6 +384,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
                 }
                 if (event.getPlayer().hasPermission("portablehorses.spawn")) {
                     Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
+					if (!isValidSpawnLocation(spawnLoc)) {
+						event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
+						return;
+					}
                     Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
                     if (horse.isValid()) {
                         nmsHandler.restoreHorseFromSaddle(event.getItem(), horse);
@@ -392,9 +403,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
         }
     }
 
+	private boolean isValidSpawnLocation(Location spawnLoc) {
+		Block b = spawnLoc.getBlock();
+		return (!b.getType().isSolid() &&
+				!b.getRelative(BlockFace.UP).getType().isSolid());
+	}
 
-    public MaterialData getCraftingSupplement() {
-
+	public MaterialData getCraftingSupplement() {
         String mat = getConfig().getString("recipe-extra-item", "ENDER_PEARL");
         int data = -1;
         if (mat.contains(":")) {
