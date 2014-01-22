@@ -46,7 +46,7 @@ public class EventListener implements Listener {
 			Horse horse = ((Horse) event.getInventory().getHolder());
 			if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
 				if (!plugin.canUseHorse(p, horse)) {
-					p.sendMessage("This horse does not belong to you!");
+					p.sendMessage(plugin.getMsg("not-your-horse"));
 					event.setCancelled(true);
 				} else {
 					plugin.saveOwnerUse(horse);
@@ -81,7 +81,7 @@ public class EventListener implements Listener {
 				if (event.getPlayer().hasPermission("portablehorses.spawn")) {
 					Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
 					if (!plugin.isValidSpawnLocation(spawnLoc)) {
-						event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
+						event.getPlayer().sendMessage(plugin.getMsg("no-spawn-permission-here"));
 						return;
 					}
 					Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);
@@ -92,10 +92,10 @@ public class EventListener implements Listener {
 						horse.setOwner(event.getPlayer());
 						plugin.saveOwnerUse(horse);
 					} else {
-						event.getPlayer().sendMessage("Sorry, you can't spawn a horse here.");
+						event.getPlayer().sendMessage(plugin.getMsg("no-spawn-permission-here"));
 					}
 				} else {
-					event.getPlayer().sendMessage("Sorry, you don't have permission to spawn a horse.");
+					event.getPlayer().sendMessage(plugin.getMsg("no-spawn-permission"));
 				}
 			}
 		}
@@ -120,7 +120,7 @@ public class EventListener implements Listener {
 					event.setCancelled(true);
 					if (plugin.preventHorseTheft) {
 						if (!plugin.canUseHorse(p, horse)) {
-							p.sendMessage("This horse does not belong to you!");
+							p.sendMessage(plugin.getMsg("not-your-horse"));
 							return;
 						}
 					}
@@ -148,7 +148,11 @@ public class EventListener implements Listener {
 				if (plugin.isPortableHorseSaddle(event.getCurrentItem())) {
 					event.setCancelled(true);
 				} else if (plugin.isEmptyPortableHorseSaddle(event.getCurrentItem()) && ((HorseInventory) event.getInventory()).getSaddle() == null) {
-					onSaddled(event, horse, event.getCurrentItem());
+					if (event.getCurrentItem().getAmount() > 1) {
+						event.setCancelled(true);
+					} else {
+						onSaddled(event, horse, event.getCurrentItem());
+					}
 				}
 			} else if (event.getRawSlot() == 0 && event.getWhoClicked().getInventory().firstEmpty() != -1 && plugin.isPortableHorseSaddle(event.getCurrentItem())) {
 				// Removing a saddle by shift-click.
@@ -159,8 +163,16 @@ public class EventListener implements Listener {
 				if (plugin.isPortableHorseSaddle(event.getCursor())) {
 					event.setCancelled(true);
 				} else if (plugin.isEmptyPortableHorseSaddle(event.getCursor())) {
-					plugin.debug("Saddling!");
-					onSaddled(event, horse, event.getCursor());
+					if (event.getCursor().getAmount() > 1) {
+						event.setCancelled(true);
+					} else {
+						plugin.debug("Saddling!");
+						event.setCancelled(true);
+						ItemStack stack = event.getCursor();
+						onSaddled(event, horse, stack);
+						event.setCurrentItem(stack);
+						event.setCursor(null);
+					}
 				}
 			}
 		} else if (event.getAction() == InventoryAction.PICKUP_ALL || event.getAction() == InventoryAction.PICKUP_ONE || event.getAction() == InventoryAction.PICKUP_HALF) {
@@ -207,9 +219,14 @@ public class EventListener implements Listener {
 	public void onSaddled(InventoryClickEvent event, Horse horse, ItemStack saddle) {
 		plugin.debug(horse + "Saddled.");
 		if (!plugin.usePermissions || event.getWhoClicked().hasPermission("portablehorses.saddle")) {
+
 			plugin.getNmsHandler().saveToSaddle(horse, saddle);
 			horse.getInventory().setSaddle(saddle);
 			event.setCurrentItem(null);
+		} else {
+			if (event.getWhoClicked().getType() == EntityType.PLAYER) {
+				((Player) event.getWhoClicked()).sendMessage(plugin.getMsg("no-saddle-permission"));
+			}
 		}
 	}
 
@@ -235,6 +252,9 @@ public class EventListener implements Listener {
 			plugin.getNmsHandler().saveToSaddle(horse, saddle);
 			horse.remove();
 		} else {
+			if (event.getWhoClicked().getType() == EntityType.PLAYER) {
+				((Player) event.getWhoClicked()).sendMessage(plugin.getMsg("no-unsaddle-permission"));
+			}
 			event.setCancelled(true);
 		}
 	}
@@ -259,7 +279,7 @@ public class EventListener implements Listener {
 				Horse horse = ((Horse) event.getVehicle());
 				if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
 					if (!plugin.canUseHorse(p, horse)) {
-						p.sendMessage("This horse does not belong to you!");
+						p.sendMessage(plugin.getMsg("not-your-horse"));
 						event.setCancelled(true);
 						final Location prevLoc = (Location) p.getMetadata("pre-mount-location").get(0).value();
 						p.removeMetadata("pre-mount-location", plugin);

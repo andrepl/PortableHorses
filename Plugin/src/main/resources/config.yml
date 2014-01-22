@@ -8,6 +8,5 @@ craft-special-saddle: false
 recipe-extra-item: ENDER_PEARL
 use-permissions: true
 allow-saddle-removal: true
-show-extra-detail: true
 prevent-horse-theft: false
 theft-prevention-expiry: 30d

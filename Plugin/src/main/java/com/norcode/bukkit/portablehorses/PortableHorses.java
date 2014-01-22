@@ -21,11 +21,13 @@ import org.bukkit.material.MaterialData;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -33,6 +35,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PortableHorses extends JavaPlugin implements Listener {
+
+	private Map<String, MessageFormat> cachedMessages = new HashMap<String, MessageFormat>();
 
     private Updater updater;
     private IPacketListener packetListener;
@@ -45,8 +49,8 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean requireSpecialSaddle = false;
     private boolean craftSpecialSaddle = false;
     public boolean allowSaddleRemoval = true;
-	private boolean showExtraDetail = true;
 	public boolean preventHorseTheft = false;
+	private ConfigAccessor messagesConfig = null;
 
     private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
@@ -70,14 +74,18 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
+		this.messagesConfig = new ConfigAccessor(this, "messages.yml");
+		this.messagesConfig.getConfig().options().copyDefaults(true);
+		this.messagesConfig.saveConfig();
+		saveDefaultConfig();
         getConfig().options().copyDefaults(true);
         saveConfig();
         initializeNMSHandler();
         initializePacketListener();
         doUpdater();
         getServer().getPluginManager().registerEvents(new EventListener(this), this);
-    }
+
+	}
 
 	private void initializePacketListener() {
 		String packageName = this.getServer().getClass().getPackage().getName();
@@ -140,10 +148,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.requireSpecialSaddle = getConfig().getBoolean("require-special-saddle", false);
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
-		this.showExtraDetail = getConfig().getBoolean("show-extra-detail", true);
 		this.preventHorseTheft = getConfig().getBoolean("prevent-horse-theft", false);
 		this.expiryMillis = timeDeltaToMillis(getConfig().getString("theft-prevention-expiry", "90d"));
-
+		this.messagesConfig.reloadConfig();
+		this.cachedMessages.clear();
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
         Iterator<Recipe> it = getServer().recipeIterator();
@@ -375,35 +383,35 @@ public class PortableHorses extends JavaPlugin implements Listener {
 				try {
 					ticks = timeDeltaToMillis(StringUtils.join(args, "", 1, args.length)) / 50;
 					if (ticks < 5) {
-						sender.sendMessage("Duration must be at least 5 seconds" + args[1]);
+						sender.sendMessage(getMsg("min-override-time"));
 						return true;
 					}
 				} catch (IllegalArgumentException ex) {
-					sender.sendMessage("Expecting number, not " + args[1]);
+					sender.sendMessage(getMsg("expecting-number", args[1]));
 					return true;
 				}
 			}
 			if (!(sender instanceof Player)) {
-				sender.sendMessage("This command cannot be run from the console.");
+				sender.sendMessage(getMsg("no-console"));
 				return true;
 			}
 			final Player p = (Player) sender;
 
 			((Player) sender).setMetadata("portablehorses-override-owner", new FixedMetadataValue(this, System.currentTimeMillis()));
-			sender.sendMessage("PortableHorses: Override-mode activated.");
+			sender.sendMessage(getMsg("override-enabled"));
 			getServer().getScheduler().runTaskLater(this, new Runnable() {
 				@Override
 				public void run() {
 					if (p.isOnline()) {
 						p.removeMetadata("portablehorses-override-owner", PortableHorses.this);
-						p.sendMessage("PortableHorses: Override-mode ended.");
+						p.sendMessage(getMsg("override-enabled"));
 					}
 				}
 			}, ticks);
 			return true;
 		} else if (args.length > 0 && args[0].equalsIgnoreCase("reloadconfig")) {
 			reloadConfig();
-			sender.sendMessage("PortableHorses configuration reloaded.");
+			sender.sendMessage(getMsg("config-reloaded"));
 			return true;
 		}
 		return false;
@@ -420,5 +428,28 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			}
 		}
 		return results;
+	}
+
+	public String getMsg(String key, Object... vars) {
+		MessageFormat msg = cachedMessages.get(key);
+		if (msg == null) {
+			String tpl = null;
+			tpl = messagesConfig.getConfig().getString(key, null);
+			if (tpl == null) {
+				tpl = key;
+				if (vars.length > 0) {
+					tpl += "[";
+					for (int i=0;i<vars.length;i++) {
+						tpl += "{" + i + "},";
+					}
+					if (tpl.endsWith(",")) {
+						tpl = tpl.substring(0, tpl.length()-1);
+					}
+				}
+			}
+			msg = new MessageFormat(tpl);
+			cachedMessages.put(key, msg);
+		}
+		return ChatColor.translateAlternateColorCodes('&', cachedMessages.get(key).format(vars));
 	}
 }
