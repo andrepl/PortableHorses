@@ -4,7 +4,9 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Horse;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -57,7 +59,7 @@ public class EventListener implements Listener {
 
 	@EventHandler(priority=EventPriority.HIGH)
 	public void onInteractHorse(PlayerInteractEntityEvent event) {
-		if (!plugin.preventHorseTheft) return;
+		if (!plugin.preventHorseTheft||plugin.preventHorseDamage) return;
 		if (event.getRightClicked().getType().equals(EntityType.HORSE)) {
 			Horse horse = ((Horse) event.getRightClicked());
 			if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
@@ -191,7 +193,6 @@ public class EventListener implements Listener {
 
 	@EventHandler(priority=EventPriority.HIGH)
 	public void onInventoryClick(final InventoryClickEvent event) {
-
 		if (!(event.getInventory() instanceof HorseInventory)) return;
 		if (plugin.allowNestedSaddles) {
 			return;
@@ -259,6 +260,31 @@ public class EventListener implements Listener {
 		}
 	}
 
+	@EventHandler(ignoreCancelled = true, priority = EventPriority.HIGH)
+	public void onHorseDamage(EntityDamageByEntityEvent event) {
+		if (!plugin.preventHorseDamage) {
+			return;
+		}
+		if (event.getEntityType() == EntityType.HORSE) {
+			Horse horse = (Horse) event.getEntity();
+			LivingEntity damager = null;
+			if (event.getDamager() instanceof Projectile) {
+				damager = ((Projectile) event.getDamager()).getShooter();
+			} else if (event.getDamager().getType() == EntityType.PLAYER) {
+				damager = (LivingEntity) event.getDamager();
+			}
+			if (damager == null || damager.getType() != EntityType.PLAYER) {
+				return;
+			}
+			if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+				if (!plugin.canDamageHorse((Player) damager, horse)) {
+					event.setCancelled(true);
+					((Player) damager).sendMessage(plugin.getMsg("not-your-horse"));
+				}
+			}
+		}
+	}
+
 	@EventHandler
 	public void onEntityDeath(EntityDeathEvent event) {
 		if (event.getEntity() instanceof Horse) {
@@ -272,7 +298,7 @@ public class EventListener implements Listener {
 	@EventHandler(priority=EventPriority.HIGH)
 	public void mountHorse(VehicleEnterEvent event) {
 		plugin.debug("mountHorse");
-		if (!plugin.preventHorseTheft) return;
+		if (!(plugin.preventHorseTheft||plugin.preventHorseDamage)) return;
 		if (event.getEntered().getType().equals(EntityType.PLAYER)) {
 			final Player p = (Player) event.getEntered();
 			if (event.getVehicle().getType().equals(EntityType.HORSE)) {

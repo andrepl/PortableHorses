@@ -50,6 +50,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     private boolean craftSpecialSaddle = false;
     public boolean allowSaddleRemoval = true;
 	public boolean preventHorseTheft = false;
+	public boolean preventHorseDamage = false;
 	private ConfigAccessor messagesConfig = null;
 
     private Random random = new Random();
@@ -149,6 +150,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.craftSpecialSaddle = getConfig().getBoolean("craft-special-saddle", false);
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
 		this.preventHorseTheft = getConfig().getBoolean("prevent-horse-theft", false);
+		this.preventHorseDamage = getConfig().getBoolean("prevent-horse-damage", false);
 		this.expiryMillis = timeDeltaToMillis(getConfig().getString("theft-prevention-expiry", "90d"));
 		this.messagesConfig.reloadConfig();
 		this.cachedMessages.clear();
@@ -215,6 +217,19 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		return sb.toString();
 	}
 
+	public boolean canDamageHorse(Player player, Horse horse) {
+		ItemStack saddle = horse.getInventory().getSaddle();
+		if (isPortableHorseSaddle(saddle)) {
+			if (preventHorseDamage) {
+				if (player.equals(horse.getOwner()) || isAdminMode(player)) {
+					return true;
+				}
+				return System.currentTimeMillis() - getLastOwnerInteraction(horse) > expiryMillis;
+			}
+		}
+		return true;
+	}
+
 	public boolean canUseHorse(Player player, Horse horse) {
 		ItemStack saddle = horse.getInventory().getSaddle();
 		if (isPortableHorseSaddle(saddle)) {
@@ -222,32 +237,32 @@ public class PortableHorses extends JavaPlugin implements Listener {
 				if (player.equals(horse.getOwner()) || isAdminMode(player)) {
 					return true;
 				}
-				if (!horse.hasMetadata("last-owner-interact")) {
-					ItemMeta meta = saddle.getItemMeta();
-					List<String> lore = meta.getLore();
-					String line1 = lore.get(0);
-					if (line1.contains(ChatColor.RESET.toString())) {
-						String timestamp = line1.substring(NMS.LORE_PREFIX.length())
-								.split(ChatColor.RESET.toString())[0];
-						horse.setMetadata("last-owner-interact",
-								new FixedMetadataValue(this, decodeTimestamp(timestamp)));
-					} else {
-						horse.setMetadata("last-owner-interact", new FixedMetadataValue(this, 0));
-					}
-
-				}
-				Long lastInteractedByOwner = horse.getMetadata("last-owner-interact").get(0).asLong();
-				if (System.currentTimeMillis() - lastInteractedByOwner > expiryMillis) {
-					// This horse hasnt been touched by it's owner in a while
-					// he can be stolen.
-					return true;
-				} else {
-					return false;
-				}
+				return System.currentTimeMillis() - getLastOwnerInteraction(horse) > expiryMillis;
 			}
 		}
 		return true;
 	}
+
+	public long getLastOwnerInteraction(Horse horse) {
+		ItemStack saddle = horse.getInventory().getSaddle();
+		if (!horse.hasMetadata("last-owner-interact")) {
+			ItemMeta meta = saddle.getItemMeta();
+			List<String> lore = meta.getLore();
+			String line1 = lore.get(0);
+			if (line1.contains(ChatColor.RESET.toString())) {
+				String timestamp = line1.substring(NMS.LORE_PREFIX.length())
+						.split(ChatColor.RESET.toString())[0];
+				horse.setMetadata("last-owner-interact",
+						new FixedMetadataValue(this, decodeTimestamp(timestamp)));
+			} else {
+				horse.setMetadata("last-owner-interact", new FixedMetadataValue(this, 0));
+			}
+
+		}
+		return horse.getMetadata("last-owner-interact").get(0).asLong();
+	}
+
+
 
 	private boolean isAdminMode(Player player) {
 		if (!player.hasPermission("portablehorses.admin")) {
