@@ -59,7 +59,7 @@ public class EventListener implements Listener {
 
 	@EventHandler(priority=EventPriority.HIGH)
 	public void onInteractHorse(PlayerInteractEntityEvent event) {
-		if (!plugin.preventHorseTheft||plugin.preventHorseDamage) return;
+		if (!(plugin.preventHorseTheft||plugin.preventHorseDamage)) return;
 		if (event.getRightClicked().getType().equals(EntityType.HORSE)) {
 			Horse horse = ((Horse) event.getRightClicked());
 			if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
