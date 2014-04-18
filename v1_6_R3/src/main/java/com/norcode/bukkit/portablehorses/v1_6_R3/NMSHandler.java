@@ -8,6 +8,8 @@ import net.minecraft.v1_6_R3.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.v1_6_R3.entity.CraftHorse;
 import org.bukkit.entity.Horse;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -16,8 +18,6 @@ import java.util.List;
 
 
 public class NMSHandler extends NMS {
-
-
 
     private LinkedList<String> nbtToLore(NBTTagCompound tag) {
         if (tag.hasKey("SaddleItem")) {
@@ -89,4 +89,9 @@ public class NMSHandler extends NMS {
             }
         }
     }
+
+	@Override
+	public LivingEntity getProjectileShooter(Projectile p) {
+		return p.getShooter();
+	}
 }

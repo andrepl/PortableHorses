@@ -269,13 +269,15 @@ public class EventListener implements Listener {
 			Horse horse = (Horse) event.getEntity();
 			LivingEntity damager = null;
 			if (event.getDamager() instanceof Projectile) {
-				damager = ((Projectile) event.getDamager()).getShooter();
+				damager = plugin.getNmsHandler().getProjectileShooter((Projectile) event.getDamager());
 			} else if (event.getDamager().getType() == EntityType.PLAYER) {
 				damager = (LivingEntity) event.getDamager();
 			}
+
 			if (damager == null || damager.getType() != EntityType.PLAYER) {
 				return;
 			}
+
 			if (plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
 				if (!plugin.canDamageHorse((Player) damager, horse)) {
 					event.setCancelled(true);

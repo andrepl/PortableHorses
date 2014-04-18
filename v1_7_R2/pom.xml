@@ -1,17 +1,19 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.norcode.bukkit.portablehorses</groupId>
-    <artifactId>PortableHorses-api</artifactId>
-    <packaging>jar</packaging>
-    <name>Portable Horses API</name>
-    <version>API</version>
-
     <parent>
-        <groupId>com.norcode.bukkit.portablehorses</groupId>
         <artifactId>PortableHorses-parent</artifactId>
+        <groupId>com.norcode.bukkit.portablehorses</groupId>
         <version>parent</version>
     </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>PortableHorses-v1_7_R2</artifactId>
+    <groupId>com.norcode.bukkit.portablehorses</groupId>
+    <version>v1_7_R2</version>
+    <packaging>jar</packaging>
+
 
     <build>
         <plugins>
@@ -38,19 +40,22 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.comphenix.protocol</groupId>
-            <artifactId>ProtocolLib</artifactId>
-            <version>3.2.0</version>
-            <type>jar</type>
-        </dependency>
-
-        <dependency>
             <groupId>org.bukkit</groupId>
             <artifactId>bukkit</artifactId>
-            <version>LATEST</version>
+            <version>1.7.5-R0.1-SNAPSHOT</version>
             <type>jar</type>
         </dependency>
-
+        <dependency>
+            <groupId>org.bukkit</groupId>
+            <artifactId>craftbukkit</artifactId>
+            <version>1.7.5-R0.1-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>com.norcode.bukkit.portablehorses</groupId>
+            <artifactId>PortableHorses-api</artifactId> <!-- Depend on the API! -->
+            <version>API</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
-
 </project>

@@ -1,17 +1,18 @@
-package com.norcode.bukkit.portablehorses.v1_7_R1;
+package com.norcode.bukkit.portablehorses.v1_7_R3 ;
 
 import com.norcode.bukkit.portablehorses.NMS;
-import net.minecraft.server.v1_7_R1.EntityHorse;
-import net.minecraft.server.v1_7_R1.NBTCompressedStreamTools;
-import net.minecraft.server.v1_7_R1.NBTTagCompound;
+import net.minecraft.server.v1_7_R3.EntityHorse;
+import net.minecraft.server.v1_7_R3.NBTCompressedStreamTools;
+import net.minecraft.server.v1_7_R3.NBTReadLimiter;
+import net.minecraft.server.v1_7_R3.NBTTagCompound;
 
-import net.minecraft.server.v1_7_R1.NBTTagList;
+import net.minecraft.server.v1_7_R3.NBTTagList;
 import net.minecraft.util.io.netty.buffer.ByteBuf;
 import net.minecraft.util.io.netty.buffer.Unpooled;
 import net.minecraft.util.io.netty.handler.codec.base64.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.ChatColor;
-import org.bukkit.craftbukkit.v1_7_R1.entity.CraftHorse;
+import org.bukkit.craftbukkit.v1_7_R3.entity.CraftHorse;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Projectile;
@@ -25,8 +26,8 @@ import java.util.List;
 
 
 public class NMSHandler extends NMS {
-	private static DecimalFormat decFormatter = new DecimalFormat("0.##");
 
+	private static DecimalFormat decFormatter = new DecimalFormat("0.##");
 
     private LinkedList<String> nbtToLore(NBTTagCompound tag) {
         if (tag.hasKey("SaddleItem")) {
@@ -62,7 +63,7 @@ public class NMSHandler extends NMS {
         }
 		byte[] bytes = new byte[decoded.readableBytes()];
 		decoded.getBytes(0, bytes);
-		NBTTagCompound tag = NBTCompressedStreamTools.a(bytes);
+		NBTTagCompound tag = NBTCompressedStreamTools.a(bytes, NBTReadLimiter.a);
 		decoded.release();
         return tag;
     }
@@ -137,6 +138,9 @@ public class NMSHandler extends NMS {
 
 	@Override
 	public LivingEntity getProjectileShooter(Projectile p) {
-		return p.getShooter();
+		if (p.getShooter() instanceof LivingEntity) {
+			return (LivingEntity) p.getShooter();
+		}
+		return null;
 	}
 }

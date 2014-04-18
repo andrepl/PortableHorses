@@ -8,6 +8,8 @@ import net.minecraft.v1_6_R2.org.bouncycastle.util.encoders.Base64;
 import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.v1_6_R2.entity.CraftHorse;
 import org.bukkit.entity.Horse;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
@@ -89,4 +91,9 @@ public class NMSHandler extends NMS {
             }
         }
     }
+
+	@Override
+	public LivingEntity getProjectileShooter(Projectile p) {
+		return p.getShooter();
+	}
 }
