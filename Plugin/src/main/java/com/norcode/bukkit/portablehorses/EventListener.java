@@ -83,7 +83,7 @@ public class EventListener implements Listener {
 				if (event.getPlayer().hasPermission("portablehorses.spawn")) {
 					Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
 					if (!plugin.isValidSpawnLocation(spawnLoc)) {
-						event.getPlayer().sendMessage(plugin.getMsg("no-spawn-permission-here"));
+						event.getPlayer().sendMessage(plugin.getMsg("no-spawn-space-here"));
 						return;
 					}
 					Horse horse = (Horse) spawnLoc.getWorld().spawnEntity(spawnLoc, EntityType.HORSE);

@@ -11,3 +11,4 @@ allow-saddle-removal: true
 prevent-horse-theft: false
 prevent-horse-damage: false
 theft-prevention-expiry: 30d
+require-clearing-to-spawn: true

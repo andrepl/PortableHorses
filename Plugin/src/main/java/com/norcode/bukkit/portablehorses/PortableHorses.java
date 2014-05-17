@@ -28,6 +28,7 @@ import java.io.StringWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -47,6 +48,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
 	private Map<String, MessageFormat> cachedMessages = new HashMap<String, MessageFormat>();
 
+	private static EnumSet<BlockFace> surroundingEight = EnumSet.of(
+			BlockFace.NORTH, BlockFace.NORTH_EAST, BlockFace.EAST, BlockFace.SOUTH_EAST,
+			BlockFace.SOUTH, BlockFace.SOUTH_WEST, BlockFace.WEST, BlockFace.NORTH_WEST);
+
     private Updater updater;
     private IPacketListener packetListener;
 	private long expiryMillis = TimeUnit.DAYS.toMillis(90);
@@ -62,12 +67,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
 	public boolean preventHorseDamage = false;
 	private ConfigAccessor messagesConfig = null;
 	private boolean logSpawns = false;
+	private boolean requireClearing = true;
 	private FileHandler logFileHandler = null;
 	private Logger spawnLogger = Logger.getLogger("PortableHorses");
 	private Random random = new Random();
-    private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
-    private ShapedRecipe specialSaddleRecipe;
-    private NMS nmsHandler;
+	private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
+	private ShapedRecipe specialSaddleRecipe;
+	private NMS nmsHandler;
 
 	public NMS getNmsHandler() {
 		return nmsHandler;
@@ -87,6 +93,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
 		this.messagesConfig = new ConfigAccessor(this, "messages.yml");
+		this.messagesConfig.saveDefaultConfig();
 		this.messagesConfig.getConfig().options().copyDefaults(true);
 		this.messagesConfig.saveConfig();
 		saveDefaultConfig();
@@ -162,6 +169,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
         this.allowSaddleRemoval = getConfig().getBoolean("allow-saddle-removal", true);
 		this.preventHorseTheft = getConfig().getBoolean("prevent-horse-theft", false);
 		this.preventHorseDamage = getConfig().getBoolean("prevent-horse-damage", false);
+		this.requireClearing = getConfig().getBoolean("require-clearing-to-spawn", true);
 		this.expiryMillis = timeDeltaToMillis(getConfig().getString("theft-prevention-expiry", "90d"));
 		this.messagesConfig.reloadConfig();
 
@@ -370,8 +378,26 @@ public class PortableHorses extends JavaPlugin implements Listener {
 
 	public boolean isValidSpawnLocation(Location spawnLoc) {
 		Block b = spawnLoc.getBlock();
-		return (!b.getType().isSolid() &&
+		boolean fits = (!b.getType().isSolid() &&
 				!b.getRelative(BlockFace.UP).getType().isSolid());
+		if (!requireClearing) {
+			return fits;
+		} else if (fits) {
+			// we need at least 3x2x3
+			for (BlockFace dir: surroundingEight) {
+				if (b.getRelative(dir).getType().isSolid()) {
+					return false;
+				}
+			}
+			b = b.getRelative(BlockFace.UP);
+			for (BlockFace dir: surroundingEight) {
+				if (b.getRelative(dir).getType().isSolid()) {
+					return false;
+				}
+			}
+			return true;
+		}
+		return false;
 	}
 
 	public MaterialData getCraftingSupplement() {
