@@ -93,6 +93,7 @@ public class EventListener implements Listener {
 						event.getPlayer().setItemInHand(null);
 						horse.setOwner(event.getPlayer());
 						plugin.saveOwnerUse(horse);
+						plugin.logSpawn(event.getPlayer(), horse);
 					} else {
 						event.getPlayer().sendMessage(plugin.getMsg("no-spawn-permission-here"));
 					}
@@ -136,7 +137,7 @@ public class EventListener implements Listener {
 		}
 	}
 
-	@EventHandler(priority= EventPriority.NORMAL, ignoreCancelled = true)
+	@EventHandler(priority= EventPriority.HIGH, ignoreCancelled = true)
 	public void onSaddleEvent(final InventoryClickEvent event) {
 
 		if (!(event.getInventory() instanceof HorseInventory)) return;
@@ -191,7 +192,7 @@ public class EventListener implements Listener {
 	}
 
 
-	@EventHandler(priority=EventPriority.HIGH)
+	@EventHandler(priority=EventPriority.NORMAL)
 	public void onInventoryClick(final InventoryClickEvent event) {
 		if (!(event.getInventory() instanceof HorseInventory)) return;
 		if (plugin.allowNestedSaddles) {
@@ -201,19 +202,14 @@ public class EventListener implements Listener {
 		if (!horse.isCarryingChest()) {
 			return;
 		}
-		plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
-			@Override
-			public void run() {
-				for (int i=1;i<event.getInventory().getSize();i++) {
-					ItemStack s = ((HorseInventory) event.getInventory()).getItem(i);
-					if (s != null && plugin.isPortableHorseSaddle(s)) {
-						event.getInventory().setItem(i, null);
-						event.getWhoClicked().getInventory().addItem(s);
-						((Player) event.getWhoClicked()).updateInventory();
-					}
-				}
-			}
-		}, 0);
+		if (event.getRawSlot() >= 17 && event.getRawSlot() <= 52 &&
+				event.isShiftClick() && plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+				event.setCancelled(true);
+		} else if ((!event.isShiftClick()) && event.getRawSlot() >= 2 && event.getRawSlot() <= 16 &&
+				plugin.isPortableHorseSaddle(event.getCursor()) &&
+				plugin.isPortableHorseSaddle(horse.getInventory().getSaddle())) {
+			event.setCancelled(true);
+		}
 	}
 
 
@@ -251,6 +247,7 @@ public class EventListener implements Listener {
 				}
 			}
 			plugin.getNmsHandler().saveToSaddle(horse, saddle);
+			plugin.logDespawn((Player) event.getWhoClicked(), horse);
 			horse.remove();
 		} else {
 			if (event.getWhoClicked().getType() == EntityType.PLAYER) {

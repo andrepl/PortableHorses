@@ -3,6 +3,7 @@ author: ${project.authors}
 name: ${project.name}
 version: ${project.version}
 depend: ${project.depend}
+
 commands:
   portablehorses:
     aliases: [ph]

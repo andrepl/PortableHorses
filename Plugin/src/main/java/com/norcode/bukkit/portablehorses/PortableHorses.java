@@ -21,8 +21,13 @@ import org.bukkit.material.MaterialData;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -30,7 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,8 +61,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
 	public boolean preventHorseTheft = false;
 	public boolean preventHorseDamage = false;
 	private ConfigAccessor messagesConfig = null;
-
-    private Random random = new Random();
+	private boolean logSpawns = false;
+	private FileHandler logFileHandler = null;
+	private Logger spawnLogger = Logger.getLogger("PortableHorses");
+	private Random random = new Random();
     private HashMap<String, HashMap<Long, List<String>>> loreStorage = new HashMap<String, HashMap<Long, List<String>>>();
     private ShapedRecipe specialSaddleRecipe;
     private NMS nmsHandler;
@@ -153,6 +164,25 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		this.preventHorseDamage = getConfig().getBoolean("prevent-horse-damage", false);
 		this.expiryMillis = timeDeltaToMillis(getConfig().getString("theft-prevention-expiry", "90d"));
 		this.messagesConfig.reloadConfig();
+
+		if (logSpawns && !getConfig().getBoolean("log-spawns", false)) {
+			if (logFileHandler != null) {
+				logFileHandler.flush();
+				logFileHandler.close();
+				spawnLogger.removeHandler(logFileHandler);
+			}
+		} else if (getConfig().getBoolean("log-spawns", false) && !logSpawns) {
+			try {
+				logFileHandler = new FileHandler(new File(getDataFolder(), "spawn.log").getAbsolutePath());
+				Formatter sformatter = new LogFormatter();
+				logFileHandler.setFormatter(sformatter);
+				spawnLogger.addHandler(logFileHandler);
+			} catch (IOException e) {
+				getLogger().warning("Failed to initialize spawn log @ " + new File(getDataFolder(), "spawn.log"));
+				return;
+			}
+		}
+		this.logSpawns = getConfig().getBoolean("log-spawns", false);
 		this.cachedMessages.clear();
         // Add or remove the crafting recipe for the special saddle as necessary.
         boolean found = false;
@@ -466,5 +496,50 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			cachedMessages.put(key, msg);
 		}
 		return ChatColor.translateAlternateColorCodes('&', cachedMessages.get(key).format(vars));
+	}
+
+	public void logSpawn(Player player, Horse horse) {
+		if (logSpawns) {
+			Location l = horse.getLocation();
+			spawnLogger.info(player.getName() + " spawned a PortableHorse at " + l.getWorld().getName() + " X:" + l.getX() + ", Y: " + l.getY() + ", Z: " + l.getZ());
+		}
+	}
+
+	public void logDespawn(Player player, Horse horse) {
+		if (logSpawns) {
+			Location l = horse.getLocation();
+			spawnLogger.info(player.getName() + " despawned a PortableHorse at " + l.getWorld().getName() + " X:" + l.getX() + ", Y: " + l.getY() + ", Z: " + l.getZ());
+		}
+	}
+
+	public static final class LogFormatter extends Formatter {
+
+		private static final String LINE_SEPARATOR = System.getProperty("line.separator");
+
+		@Override
+		public String format(LogRecord record) {
+			StringBuilder sb = new StringBuilder();
+
+			sb.append(new Date(record.getMillis()))
+					.append(" ")
+					.append(record.getLevel().getLocalizedName())
+					.append(": ")
+					.append(formatMessage(record))
+					.append(LINE_SEPARATOR);
+
+			if (record.getThrown() != null) {
+				try {
+					StringWriter sw = new StringWriter();
+					PrintWriter pw = new PrintWriter(sw);
+					record.getThrown().printStackTrace(pw);
+					pw.close();
+					sb.append(sw.toString());
+				} catch (Exception ex) {
+					// ignore
+				}
+			}
+
+			return sb.toString();
+		}
 	}
 }
