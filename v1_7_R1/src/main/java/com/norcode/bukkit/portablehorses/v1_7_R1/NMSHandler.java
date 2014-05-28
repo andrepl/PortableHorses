@@ -28,62 +28,62 @@ public class NMSHandler extends NMS {
 	private static DecimalFormat decFormatter = new DecimalFormat("0.##");
 
 
-    private LinkedList<String> nbtToLore(NBTTagCompound tag) {
-        if (tag.hasKey("SaddleItem")) {
-            tag.remove("SaddleItem");
-        }
+	private LinkedList<String> nbtToLore(NBTTagCompound tag) {
+		if (tag.hasKey("SaddleItem")) {
+			tag.remove("SaddleItem");
+		}
 
 		ByteBuf tagdata = Unpooled.wrappedBuffer(NBTCompressedStreamTools.a(tag));
 		LinkedList<String> lines = new LinkedList<String>();
-        String encoded = Base64.encode(tagdata).toString(Charset.defaultCharset());
+		String encoded = Base64.encode(tagdata).toString(Charset.defaultCharset());
 		tagdata.release();
-        while (encoded.length() > 32760) {
-            lines.add(ChatColor.BLACK + encoded.substring(0, 32760));
-            encoded = encoded.substring(32760);
-        }
-        if (encoded.length() > 0) {
-            lines.add(ChatColor.BLACK + encoded);
-        }
-        return lines;
-    }
+		while (encoded.length() > 32760) {
+			lines.add(ChatColor.BLACK + encoded.substring(0, 32760));
+			encoded = encoded.substring(32760);
+		}
+		if (encoded.length() > 0) {
+			lines.add(ChatColor.BLACK + encoded);
+		}
+		return lines;
+	}
 
-    private NBTTagCompound nbtFromLore(List<String> lore) {
-        String data = "";
-        for (int i=0;i<lore.size();i++) {
-            if (lore.get(i).startsWith(ChatColor.BLACK.toString())) {
-                data += lore.get(i).substring(2);
-            }
-        }
-        ByteBuf decoded = null;
-        try {
-            decoded = Base64.decode(Unpooled.copiedBuffer(data.getBytes()));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+	private NBTTagCompound nbtFromLore(List<String> lore) {
+		String data = "";
+		for (int i = 0; i < lore.size(); i++) {
+			if (lore.get(i).startsWith(ChatColor.BLACK.toString())) {
+				data += lore.get(i).substring(2);
+			}
+		}
+		ByteBuf decoded = null;
+		try {
+			decoded = Base64.decode(Unpooled.copiedBuffer(data.getBytes()));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		byte[] bytes = new byte[decoded.readableBytes()];
 		decoded.getBytes(0, bytes);
 		NBTTagCompound tag = NBTCompressedStreamTools.a(bytes);
 		decoded.release();
-        return tag;
-    }
+		return tag;
+	}
 
 
-    @Override
-    public void saveToSaddle(Horse horse, ItemStack saddle) {
-        NBTTagCompound tag = new NBTTagCompound();
-        EntityHorse eh = ((CraftHorse) horse).getHandle();
-        eh.b(tag);
-        tag.setDouble("currentHP", horse.getHealth());
-        ItemMeta meta = saddle.getItemMeta();
-        meta.setDisplayName(DISPLAY_NAME);
-        if (horse.getCustomName() != null) {
-            meta.setDisplayName(horse.getCustomName());
-        }
-        LinkedList<String> lore = nbtToLore(tag);
+	@Override
+	public void saveToSaddle(Horse horse, ItemStack saddle) {
+		NBTTagCompound tag = new NBTTagCompound();
+		EntityHorse eh = ((CraftHorse) horse).getHandle();
+		eh.b(tag);
+		tag.setDouble("currentHP", horse.getHealth());
+		ItemMeta meta = saddle.getItemMeta();
+		meta.setDisplayName(DISPLAY_NAME);
+		if (horse.getCustomName() != null) {
+			meta.setDisplayName(horse.getCustomName());
+		}
+		LinkedList<String> lore = nbtToLore(tag);
 
 		// adding horse description in reverse order
 		NBTTagList attributes = tag.getList("Attributes", 10); // 10 = NbtTagCompound.getTypeId();
-		for (int i=0; i<attributes.size(); i++) {
+		for (int i = 0; i < attributes.size(); i++) {
 			NBTTagCompound attr = attributes.get(i);
 			if (attr.getString("Name").equals("generic.movementSpeed")) {
 				lore.addFirst(ChatColor.WHITE + "Speed: " + ChatColor.RESET + "" + ChatColor.GRAY +
@@ -95,9 +95,9 @@ public class NMSHandler extends NMS {
 		}
 
 		// HP
-		String  hp = decFormatter.format(tag.getDouble("currentHP"));
+		String hp = decFormatter.format(tag.getDouble("currentHP"));
 		String maxHP = decFormatter.format(tag.getFloat("HealF"));
-		lore.addFirst(ChatColor.WHITE + "HP: " + ChatColor.RESET + "" + ChatColor.GRAY + "" +hp + ChatColor.WHITE + "/" + ChatColor.GRAY + "" + maxHP);
+		lore.addFirst(ChatColor.WHITE + "HP: " + ChatColor.RESET + "" + ChatColor.GRAY + "" + hp + ChatColor.WHITE + "/" + ChatColor.GRAY + "" + maxHP);
 
 		// appearance
 		if (horse.getVariant().equals(Horse.Variant.HORSE)) {
@@ -109,31 +109,31 @@ public class NMSHandler extends NMS {
 		}
 
 		// type
-        lore.addFirst(LORE_PREFIX + "" + ChatColor.WHITE + "" + ChatColor.BOLD + "" +
+		lore.addFirst(LORE_PREFIX + "" + ChatColor.WHITE + "" + ChatColor.BOLD + "" +
 				StringUtils.capitalize(horse.getVariant().name().replace("_", " ").toLowerCase()));
-        meta.setLore(lore);
-        saddle.setItemMeta(meta);
-    }
+		meta.setLore(lore);
+		saddle.setItemMeta(meta);
+	}
 
-    @Override
-    public void restoreHorseFromSaddle(ItemStack stack, Horse horse) {
-        EntityHorse eh = ((CraftHorse) horse).getHandle();
-        if (stack.hasItemMeta()) {
-            List<String> lore = stack.getItemMeta().getLore();
-            if (lore != null) {
-                NBTTagCompound tag = nbtFromLore(lore);
-                double hp = -1;
-                if (tag.hasKey("currentHP")) {
-                    hp = tag.getDouble("currentHP");
-                    tag.remove("currentHP");
-                }
-                eh.a(tag);
-                if (hp != -1) {
-                    horse.setHealth(hp);
-                }
-            }
-        }
-    }
+	@Override
+	public void restoreHorseFromSaddle(ItemStack stack, Horse horse) {
+		EntityHorse eh = ((CraftHorse) horse).getHandle();
+		if (stack.hasItemMeta()) {
+			List<String> lore = stack.getItemMeta().getLore();
+			if (lore != null) {
+				NBTTagCompound tag = nbtFromLore(lore);
+				double hp = -1;
+				if (tag.hasKey("currentHP")) {
+					hp = tag.getDouble("currentHP");
+					tag.remove("currentHP");
+				}
+				eh.a(tag);
+				if (hp != -1) {
+					horse.setHealth(hp);
+				}
+			}
+		}
+	}
 
 	@Override
 	public LivingEntity getProjectileShooter(Projectile p) {
