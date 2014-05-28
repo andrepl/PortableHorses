@@ -101,9 +101,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
         saveConfig();
         initializeNMSHandler();
         initializePacketListener();
-        doUpdater();
-        getServer().getPluginManager().registerEvents(new EventListener(this), this);
-
+		if (this.isEnabled()) {
+        	doUpdater();
+        	getServer().getPluginManager().registerEvents(new EventListener(this), this);
+		}
 	}
 
 	private void initializePacketListener() {
@@ -112,8 +113,13 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		// org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
 		String version = packageName.substring(packageName.lastIndexOf('.') + 1);
 		// Get the last element of the package
-		if (version.equals("craftbukkit")) { // If the last element of the package was "craftbukkit" we are now pre-refactor
-			version = "pre";
+		if (getConfig().getString("force-version", null) != null) {
+			version = getConfig().getString("force-version");
+			getLogger().info("forcing package version `" + version + "` as set in config.yml");
+		} else if (version.equals("craftbukkit")) { // If the last element of the package was "craftbukkit" we are now pre-refactor
+			this.getLogger().severe("This version of craftbukkit is not supported.");
+			this.setEnabled(false);
+			return;
 		}
 		try {
 			final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + version + ".PacketListener");
@@ -136,9 +142,16 @@ public class PortableHorses extends JavaPlugin implements Listener {
         // Get full package string of CraftServer.
         // org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
         String version = packageName.substring(packageName.lastIndexOf('.') + 1);
+		debug("detected package version `" + version + "`");
         // Get the last element of the package
-        if (version.equals("craftbukkit")) { // If the last element of the package was "craftbukkit" we are now pre-refactor
-            version = "pre";
+		if (getConfig().getString("force-version", null) != null) {
+			version = getConfig().getString("force-version");
+			getLogger().info("forcing package version `" + version + "` as set in config.yml");
+		} else if (version.equals("craftbukkit")) {
+			// If the last element of the package was "craftbukkit" we are now pre-refactor
+			this.getLogger().severe("This version of craftbukkit is not supported.");
+            this.setEnabled(false);
+			return;
         }
         try {
             final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + version + ".NMSHandler");
@@ -148,7 +161,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
             }
         } catch (final Exception e) {
             getLogger().log(Level.SEVERE, "Exception loading implementation: ", e);
-
             this.getLogger().severe("Could not find support for this craftbukkit version " + version + ".");
             this.getLogger().info("Check for updates at http://dev.bukktit.org/bukkit-plugins/portable-horses/");
             this.setEnabled(false);

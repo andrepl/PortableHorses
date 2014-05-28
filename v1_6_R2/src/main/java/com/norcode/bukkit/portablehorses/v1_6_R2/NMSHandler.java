@@ -19,8 +19,6 @@ import java.util.List;
 
 public class NMSHandler extends NMS {
 
-
-
     private LinkedList<String> nbtToLore(NBTTagCompound tag) {
         if (tag.hasKey("SaddleItem")) {
             tag.remove("SaddleItem");
