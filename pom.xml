@@ -16,6 +16,7 @@
         <module>v1_7_R1</module>
         <module>v1_7_R2</module>
         <module>v1_7_R3</module>
+        <module>v1_7_R3_2</module>
     </modules>
 
     <scm>

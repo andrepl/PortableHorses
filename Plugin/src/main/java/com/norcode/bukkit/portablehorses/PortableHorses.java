@@ -2,6 +2,7 @@ package com.norcode.bukkit.portablehorses;
 
 import net.gravitydevelopment.updater.Updater;
 import org.apache.commons.lang.StringUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -12,6 +13,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
@@ -52,8 +54,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			BlockFace.NORTH, BlockFace.NORTH_EAST, BlockFace.EAST, BlockFace.SOUTH_EAST,
 			BlockFace.SOUTH, BlockFace.SOUTH_WEST, BlockFace.WEST, BlockFace.NORTH_WEST);
 
+	private String packageVersion;
     private Updater updater;
     private IPacketListener packetListener;
+	private IHorseDeathHandler horseDeathHandler;
 	private long expiryMillis = TimeUnit.DAYS.toMillis(90);
 	public boolean debugMode = false;
     public boolean usePermissions = true;
@@ -99,15 +103,39 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		saveDefaultConfig();
         getConfig().options().copyDefaults(true);
         saveConfig();
+		this.packageVersion = getPackageVersion();
+		if (this.packageVersion == null) {
+			this.setEnabled(false);
+			getLogger().severe("Unknown craftbukkit version, plugin disabled.");
+			return;
+		}
         initializeNMSHandler();
         initializePacketListener();
+		initializeDeathHandler();
 		if (this.isEnabled()) {
         	doUpdater();
         	getServer().getPluginManager().registerEvents(new EventListener(this), this);
 		}
 	}
 
-	private void initializePacketListener() {
+	private void initializeDeathHandler() {
+		try {
+			final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + packageVersion + ".HorseDeathHandler");
+			// Check if we have a NMSHandler class at that location.
+			if (IHorseDeathHandler.class.isAssignableFrom(clazz)) { // Make sure it actually implements NMS
+				this.horseDeathHandler = (IHorseDeathHandler) clazz.getConstructor().newInstance(); // Set our handler
+			}
+		} catch (final Exception e) {
+			getLogger().log(Level.SEVERE, "Exception loading implementation: ", e);
+			this.getLogger().severe("Could not find support for this craftbukkit version " + packageVersion + ".");
+			this.getLogger().info("Check for updates at http://dev.bukktit.org/bukkit-plugins/portable-horses/");
+			this.setEnabled(false);
+			return;
+		}
+
+	}
+
+	private String getPackageVersion() {
 		String packageName = this.getServer().getClass().getPackage().getName();
 		// Get full package string of CraftServer.
 		// org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
@@ -119,10 +147,19 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		} else if (version.equals("craftbukkit")) { // If the last element of the package was "craftbukkit" we are now pre-refactor
 			this.getLogger().severe("This version of craftbukkit is not supported.");
 			this.setEnabled(false);
-			return;
+			version = null;
+		} else if (version.equals("v1_7_R3") &&
+			Bukkit.getBukkitVersion().equalsIgnoreCase("1.7.9-R0.2")) {
+			// we have to special case this because craftbukkit
+			// broke us in the middle of 1.7.9
+			version = "v1_7_R3_2";
 		}
+		return version;
+	}
+
+	private void initializePacketListener() {
 		try {
-			final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + version + ".PacketListener");
+			final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + packageVersion + ".PacketListener");
 			// Check if we have a NMSHandler class at that location.
 			if (IPacketListener.class.isAssignableFrom(clazz)) { // Make sure it actually implements NMS
 				this.packetListener = (IPacketListener) clazz.getConstructor(JavaPlugin.class).newInstance(this); // Set our handler
@@ -130,43 +167,31 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		} catch (final Exception e) {
 			getLogger().log(Level.SEVERE, "Exception loading implementation: ", e);
 
-			this.getLogger().severe("Could not find support for this craftbukkit version " + version + ".");
+			this.getLogger().severe("Could not find support for this craftbukkit version " + packageVersion + ".");
 			this.getLogger().info("Check for updates at http://dev.bukktit.org/bukkit-plugins/portable-horses/");
 			this.setEnabled(false);
 			return;
 		}
+
+
 	}
 
 	private void initializeNMSHandler() {
-        String packageName = this.getServer().getClass().getPackage().getName();
-        // Get full package string of CraftServer.
-        // org.bukkit.craftbukkit.versionstring (or for pre-refactor, just org.bukkit.craftbukkit
-        String version = packageName.substring(packageName.lastIndexOf('.') + 1);
-		debug("detected package version `" + version + "`");
-        // Get the last element of the package
-		if (getConfig().getString("force-version", null) != null) {
-			version = getConfig().getString("force-version");
-			getLogger().info("forcing package version `" + version + "` as set in config.yml");
-		} else if (version.equals("craftbukkit")) {
-			// If the last element of the package was "craftbukkit" we are now pre-refactor
-			this.getLogger().severe("This version of craftbukkit is not supported.");
-            this.setEnabled(false);
-			return;
-        }
         try {
-            final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + version + ".NMSHandler");
+            final Class<?> clazz = Class.forName("com.norcode.bukkit.portablehorses." + packageVersion + ".NMSHandler");
             // Check if we have a NMSHandler class at that location.
             if (NMS.class.isAssignableFrom(clazz)) { // Make sure it actually implements NMS
                 this.nmsHandler = (NMS) clazz.getConstructor().newInstance(); // Set our handler
             }
         } catch (final Exception e) {
             getLogger().log(Level.SEVERE, "Exception loading implementation: ", e);
-            this.getLogger().severe("Could not find support for this craftbukkit version " + version + ".");
+            this.getLogger().severe("Could not find support for this craftbukkit version " + packageVersion + ".");
             this.getLogger().info("Check for updates at http://dev.bukktit.org/bukkit-plugins/portable-horses/");
             this.setEnabled(false);
             return;
         }
     }
+
 
     @Override
     public void reloadConfig() {
@@ -548,6 +573,10 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			Location l = horse.getLocation();
 			spawnLogger.info(player.getName() + " despawned a PortableHorse at " + l.getWorld().getName() + " X:" + l.getX() + ", Y: " + l.getY() + ", Z: " + l.getZ());
 		}
+	}
+
+	public void handleHorseDeath(EntityDeathEvent event, ItemStack emptyPortableHorseSaddle) {
+		horseDeathHandler.handleHorseDeath(event, emptyPortableHorseSaddle);
 	}
 
 	public static final class LogFormatter extends Formatter {

@@ -284,12 +284,12 @@ public class EventListener implements Listener {
 		}
 	}
 
-	@EventHandler
+	@EventHandler(ignoreCancelled=true, priority=EventPriority.MONITOR)
 	public void onEntityDeath(EntityDeathEvent event) {
 		if (event.getEntity() instanceof Horse) {
 			Horse h = (Horse) event.getEntity();
 			if (plugin.isPortableHorseSaddle(h.getInventory().getSaddle())) {
-				h.getInventory().setSaddle(plugin.getEmptyPortableHorseSaddle());
+				plugin.handleHorseDeath(event, plugin.getEmptyPortableHorseSaddle());
 			}
 		}
 	}
