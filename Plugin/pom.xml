@@ -25,6 +25,13 @@
     <dependencies>
         <dependency>
             <groupId>com.norcode.bukkit.portablehorses</groupId>
+            <artifactId>PortableHorses-v1_7_R3_2</artifactId>
+            <version>v1_7_R3_2</version>
+            <type>jar</type>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.norcode.bukkit.portablehorses</groupId>
             <artifactId>PortableHorses-v1_7_R3</artifactId>
             <version>v1_7_R3</version>
             <type>jar</type>
