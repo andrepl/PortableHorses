@@ -294,7 +294,7 @@ public class EventListener implements Listener {
 		}
 	}
 
-	@EventHandler(priority=EventPriority.HIGH)
+	@EventHandler(priority=EventPriority.HIGHEST)
 	public void mountHorse(VehicleEnterEvent event) {
 		plugin.debug("mountHorse");
 		if (!(plugin.preventHorseTheft||plugin.preventHorseDamage)) return;
