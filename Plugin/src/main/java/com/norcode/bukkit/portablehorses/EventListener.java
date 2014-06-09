@@ -59,6 +59,7 @@ public class EventListener implements Listener {
 
 	@EventHandler(priority=EventPriority.HIGH)
 	public void onInteractHorse(PlayerInteractEntityEvent event) {
+		plugin.debug("pre-mount");
 		if (!(plugin.preventHorseTheft||plugin.preventHorseDamage)) return;
 		if (event.getRightClicked().getType().equals(EntityType.HORSE)) {
 			Horse horse = ((Horse) event.getRightClicked());
@@ -66,9 +67,11 @@ public class EventListener implements Listener {
 				if (!plugin.canUseHorse(event.getPlayer(), horse)) {
 					event.getPlayer().setMetadata("pre-mount-location",
 							new FixedMetadataValue(plugin, event.getPlayer().getLocation().clone()));
+					plugin.debug("pre-mount meta set");
 				} else {
-					plugin.saveOwnerUse(horse);
+					plugin.debug("Player " + event.getPlayer() + " != " + horse.getOwner());
 				}
+				plugin.saveOwnerUse(horse);
 			}
 		}
 	}
