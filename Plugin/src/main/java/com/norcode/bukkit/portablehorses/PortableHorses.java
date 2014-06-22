@@ -106,7 +106,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		this.packageVersion = getPackageVersion();
 		if (this.packageVersion == null) {
 			this.setEnabled(false);
-			getLogger().severe("Unknown craftbukkit version, plugin disabled.");
+		getLogger().severe("Unknown craftbukkit version, plugin disabled.");
 			return;
 		}
         initializeNMSHandler();
@@ -149,7 +149,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
 			this.setEnabled(false);
 			version = null;
 		} else if (version.equals("v1_7_R3") &&
-			Bukkit.getBukkitVersion().equalsIgnoreCase("1.7.9-R0.2")) {
+			Bukkit.getBukkitVersion().startsWith("1.7.9-R0.")) {
 			// we have to special case this because craftbukkit
 			// broke us in the middle of 1.7.9
 			version = "v1_7_R3_2";
