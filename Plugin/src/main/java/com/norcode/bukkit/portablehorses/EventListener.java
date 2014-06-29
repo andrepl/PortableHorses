@@ -16,12 +16,14 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.inventory.HorseInventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.EnumSet;
@@ -223,7 +225,7 @@ public class EventListener implements Listener {
 			plugin.getNmsHandler().saveToSaddle(horse, saddle);
 			horse.getInventory().setSaddle(saddle);
 			event.setCurrentItem(null);
-		} else {
+		} else if (plugin.requireSpecialSaddle) {
 			if (event.getWhoClicked().getType() == EntityType.PLAYER) {
 				((Player) event.getWhoClicked()).sendMessage(plugin.getMsg("no-saddle-permission"));
 			}
@@ -320,4 +322,17 @@ public class EventListener implements Listener {
 		}
 	}
 
+	@EventHandler(priority=EventPriority.NORMAL)
+	public void onPlayerCraftSaddle(PrepareItemCraftEvent event) {
+		if (event.getRecipe() instanceof ShapedRecipe) {
+			if (event.getRecipe().getResult().equals(plugin.getSpecialSaddleRecipe().getResult())) {
+				if (event.getViewers().get(0) instanceof Player) {
+					Player player = (Player) event.getViewers().get(0);
+					if (!player.hasPermission("portablehorses.craft-saddle")) {
+						event.getInventory().setResult(null);
+					}
+				}
+			}
+		}
+	}
 }

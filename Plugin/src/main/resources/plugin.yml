@@ -28,3 +28,6 @@ permissions:
   portablehorses.spawn:
       default: op
       description: allows spawning portable horses using the saddle.
+  portablehorses.craft-saddle:
+      default: op
+      description: allows crafting of the empty PortableHorses saddle.

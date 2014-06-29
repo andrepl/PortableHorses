@@ -64,8 +64,8 @@ public class PortableHorses extends JavaPlugin implements Listener {
     public boolean storeArmor = true;
     public boolean storeInventory = true;
     public boolean allowNestedSaddles = false;
-    private boolean requireSpecialSaddle = false;
-    private boolean craftSpecialSaddle = false;
+    public boolean requireSpecialSaddle = false;
+    public boolean craftSpecialSaddle = false;
     public boolean allowSaddleRemoval = true;
 	public boolean preventHorseTheft = false;
 	public boolean preventHorseDamage = false;
@@ -83,7 +83,7 @@ public class PortableHorses extends JavaPlugin implements Listener {
 		return nmsHandler;
 	}
 
-	private Recipe getSpecialSaddleRecipe() {
+	public Recipe getSpecialSaddleRecipe() {
         if (this.specialSaddleRecipe == null) {
             ItemStack result = getEmptyPortableHorseSaddle();
             this.specialSaddleRecipe = new ShapedRecipe(result);
@@ -247,8 +247,6 @@ public class PortableHorses extends JavaPlugin implements Listener {
         } catch (AbstractMethodError ex) {
             getLogger().warning("abstract method error");
         }
-
-
 
         if (craftSpecialSaddle && !found) {
             getServer().addRecipe(this.getSpecialSaddleRecipe());
