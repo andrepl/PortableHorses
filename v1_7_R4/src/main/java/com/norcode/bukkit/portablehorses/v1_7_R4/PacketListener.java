@@ -17,6 +17,7 @@ import com.comphenix.protocol.wrappers.nbt.NbtFactory;
 import com.comphenix.protocol.wrappers.nbt.NbtList;
 import com.comphenix.protocol.wrappers.nbt.NbtType;
 import com.comphenix.protocol.wrappers.nbt.io.NbtTextSerializer;
+import com.google.common.eventbus.EventBus;
 import com.norcode.bukkit.portablehorses.IPacketListener;
 import com.norcode.bukkit.portablehorses.NMS;
 import net.minecraft.server.v1_7_R4.ChatComponentText;
@@ -32,6 +33,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.shininet.bukkit.itemrenamer.component.Component;
+import org.shininet.bukkit.itemrenamer.component.SpigotStackWriterComponent;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipe;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipeList;
 
@@ -52,6 +55,10 @@ public class PacketListener implements IPacketListener {
 	public PacketListener(JavaPlugin plugin) {
 		this.plugin = plugin;
 		protocolManager = ProtocolLibrary.getProtocolManager();
+        if (SpigotStackWriterComponent.isRequired()) {
+            Component workaround = new SpigotStackWriterComponent(ProtocolLibrary.getProtocolManager());
+            workaround.register(plugin, new EventBus());
+        }
 		this.registerListeners();
 
 	}

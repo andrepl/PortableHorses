@@ -3,14 +3,9 @@ package com.norcode.bukkit.portablehorses.v1_7_R3_2;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerOptions;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.utility.MinecraftReflection;
-import com.comphenix.protocol.utility.StreamSerializer;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import com.comphenix.protocol.wrappers.nbt.NbtCompound;
 import com.comphenix.protocol.wrappers.nbt.NbtFactory;
@@ -32,6 +27,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.shininet.bukkit.itemrenamer.component.SpigotSafeSerializer;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipe;
 import org.shininet.bukkit.itemrenamer.merchant.MerchantRecipeList;
 
@@ -40,6 +36,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -55,8 +52,20 @@ public class PacketListener implements IPacketListener {
 		this.registerListeners();
 
 	}
+    private boolean hasSpigotWorkaround(Collection<PacketOutputHandler> handlers) {
+        String name = SpigotWorkaroundAdapter.class.getSimpleName();
 
-	public void registerListeners() {
+            for (PacketOutputHandler handler : handlers) {
+            for (Class<?> interfaze : handler.getClass().getInterfaces()) {
+                if (name.equals(interfaze.getSimpleName())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void registerListeners() {
 		PacketAdapter.AdapterParameteters params = PacketAdapter.params()
 				.plugin(plugin)
 				.listenerPriority(ListenerPriority.HIGH)
@@ -70,24 +79,24 @@ public class PacketListener implements IPacketListener {
 			public void onPacketSending(PacketEvent event) {
 				PacketContainer packet = event.getPacket();
 					Player player = event.getPlayer();
+
 					if (event.getPacketType().equals(PacketType.Play.Server.CHAT)) {
 						StructureModifier<WrappedChatComponent> cm = packet.getChatComponents();
 						WrappedChatComponent unfiltered;
-						WrappedChatComponent filtered;
 						for (int i=0; i<cm.size(); i++) {
 							unfiltered = cm.read(i);
 							cm.write(i, WrappedChatComponent.fromHandle(
 									filterChatComponent((IChatBaseComponent) cm.read(i).getHandle())));
 						}
 
-					} else
-					if (event.getPacketType().equals(PacketType.Play.Server.SET_SLOT)) {
+					} else if (event.getPacketType().equals(PacketType.Play.Server.SET_SLOT)) {
 						StructureModifier<ItemStack> sm = packet.getItemModifier();
 						for (int i = 0; i < sm.size(); i++) {
 							filterLore(sm.read(i));
 						}
 					} else if (event.getPacketType().equals(PacketType.Play.Server.WINDOW_ITEMS)) {
 						StructureModifier<ItemStack[]> smArray = packet.getItemArrayModifier();
+
 						for (int i = 0; i < smArray.size(); i++) {
 							filterLore(smArray.read(i));
 						}
@@ -126,7 +135,7 @@ public class PacketListener implements IPacketListener {
 						// Read slot
 						input.readShort();
 						// read  & unfilter itemstack
-						ItemStack stack = readItemStack(input, new StreamSerializer());
+						ItemStack stack = SpigotSafeSerializer.getDefault().deserializeItemStack(input);
 						unfilterLore(stack);
 						// And write it back
 						event.getPacket().getItemModifier().write(0, stack);
@@ -258,32 +267,6 @@ public class PacketListener implements IPacketListener {
 		return null;
 	}
 
-	/**
-	 * Read an ItemStack from a input stream without "scrubbing" the NBT content.
-	 * @param input - the input stream.
-	 * @param serializer - methods for serializing Minecraft object.
-	 * @return The deserialized item stack.
-	 * @throws IOException If anything went wrong.
-	 */
-	private ItemStack readItemStack(DataInputStream input, StreamSerializer serializer) throws IOException {
-		ItemStack result = null;
-		short type = input.readShort();
-
-		if (type >= 0) {
-			byte amount = input.readByte();
-			short damage = input.readShort();
-
-			result = new ItemStack(type, amount, damage);
-			NbtCompound tag = serializer.deserializeCompound(input);
-
-			if (tag != null) {
-				result = MinecraftReflection.getBukkitItemStack(result);
-				NbtFactory.setItemTag(result, tag);
-			}
-		}
-		return result;
-	}
-
 	private byte[] processMerchantList(byte[] data) throws IOException {
 		ByteArrayInputStream source = new ByteArrayInputStream(data);
 		DataInputStream input = new DataInputStream(source);
@@ -306,5 +289,12 @@ public class PacketListener implements IPacketListener {
 		list.writeRecipiesToStream(output);
 		return buffer.toByteArray();
 	}
-
+    /**
+     * Marker interface used to indicate that an output adapter is a Spigot workaround adapter.
+     * <p >
+     * This is used to avoid adding multiple workaround adapters by multiple plugins.
+     * @author Kristian
+     */
+     private interface SpigotWorkaroundAdapter {
+     }
 }

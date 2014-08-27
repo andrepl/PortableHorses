@@ -2,6 +2,7 @@ debug: false
 auto-update: notify-only
 store-inventory: true
 allow-nested-saddles: false
+auto-saddle: true
 store-armor: true
 require-special-saddle: false
 craft-special-saddle: false
