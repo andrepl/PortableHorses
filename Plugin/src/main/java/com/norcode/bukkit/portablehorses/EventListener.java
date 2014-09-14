@@ -21,6 +21,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
+import org.bukkit.event.vehicle.VehicleExitEvent;
 import org.bukkit.inventory.HorseInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
@@ -235,6 +236,13 @@ public class EventListener implements Listener {
 	public void onUnsaddled(InventoryClickEvent event, Horse horse, ItemStack saddle) {
 		plugin.debug(horse + "Unsaddled.");
 		if (!plugin.usePermissions || event.getWhoClicked().hasPermission("portablehorses.unsaddle")) {
+			if (horse.getPassenger() != null && horse.getPassenger() instanceof LivingEntity) {
+				VehicleExitEvent vee = new VehicleExitEvent(horse, (LivingEntity) horse.getPassenger());
+				plugin.getServer().getPluginManager().callEvent(vee);
+				if (vee.isCancelled()) {
+					return;
+				}
+            }
 			if (!plugin.storeArmor) {
 				if (horse.getInventory().getArmor() != null && horse.getInventory().getArmor().getType() != Material.AIR) {
 					horse.getWorld().dropItem(horse.getLocation(), horse.getInventory().getArmor());
